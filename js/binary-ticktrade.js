@@ -1043,7 +1043,7 @@ angular.module('binary').factory('appVersionService', [
   }
 ]);
 /**
- * @name chartService 
+ * @name chartService
  * @author Amin Marashi
  * @contributors []
  * @since 11/25/2015
@@ -1080,8 +1080,8 @@ angular.module('binary').factory('chartService', [
             return !distribute(index);
           },
           datasets: [{
-              strokeColor: 'orange',
-              pointColor: 'orange',
+              strokeColor: '#e98024',
+              pointColor: '#e98024',
               pointStrokeColor: '#fff',
               data: []
             }]
@@ -1092,7 +1092,9 @@ angular.module('binary').factory('chartService', [
           datasetFill: false,
           showTooltips: false,
           keepAspectRatio: false,
-          scaleShowLabels: false
+          scaleShowLabels: false,
+          pointDotRadius: 3,
+          datasetStrokeWidth: 1
         }
       };
     };
@@ -1508,7 +1510,7 @@ angular.module('binary').factory('chartService', [
         if (isLastPoint(index) && !showingHistory()) {
           color = 'green';
         } else {
-          color = 'orange';
+          color = '#e98024';
         }
         return color;
       };
