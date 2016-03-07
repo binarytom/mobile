@@ -47,6 +47,12 @@ angular.module('binary').run([
           navigator.app.backHistory();
         }
       }, 100);
+      var handleUnloggedinUser = function () {
+        if (!accountService.getDefault()) {
+          $state.go('signin');
+        }
+      };
+      handleUnloggedinUser();
       // Redirecting to the login page if there is not any default token
       $rootScope.$on('$stateChangeStart', function (event, toState, toParams, fromState, fromParams) {
         if (toState.name != 'signin' && toState.name != 'help' && !accountService.getDefault()) {
@@ -55,255 +61,6 @@ angular.module('binary').run([
         }
       });
     });
-  }
-]);
-/**
- * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
- *
- * This patch works around iOS9 UIWebView regression that causes infinite digest
- * errors in Angular.
- *
- * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
- * have the workaround baked in.
- *
- * To apply this patch load/bundle this file with your application and add a
- * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
- *
- * For example:
- *
- * ```
- * angular.module('myApp', ['ngRoute'])`
- * ```
- *
- * becomes
- *
- * ```
- * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
- * ```
- *
- *
- * More info:
- * - https://openradar.appspot.com/22186109
- * - https://github.com/angular/angular.js/issues/12241
- * - https://github.com/driftyco/ionic/issues/4082
- *
- *
- * @license AngularJS
- * (c) 2010-2015 Google, Inc. http://angularjs.org
- * License: MIT
- */
-angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
-  '$provide',
-  function ($provide) {
-    'use strict';
-    $provide.decorator('$browser', [
-      '$delegate',
-      '$window',
-      function ($delegate, $window) {
-        if (isIOS9UIWebView($window.navigator.userAgent)) {
-          return applyIOS9Shim($delegate);
-        }
-        return $delegate;
-        function isIOS9UIWebView(userAgent) {
-          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
-        }
-        function applyIOS9Shim(browser) {
-          var pendingLocationUrl = null;
-          var originalUrlFn = browser.url;
-          browser.url = function () {
-            if (arguments.length) {
-              pendingLocationUrl = arguments[0];
-              return originalUrlFn.apply(browser, arguments);
-            }
-            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
-          };
-          window.addEventListener('popstate', clearPendingLocationUrl, false);
-          window.addEventListener('hashchange', clearPendingLocationUrl, false);
-          function clearPendingLocationUrl() {
-            pendingLocationUrl = null;
-          }
-          return browser;
-        }
-      }
-    ]);
-  }
-]);
-/**
- * @contributors []
- * @since 10/25/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').constant('config', {
-  'tradeCategories': [
-    {
-      name: 'Up/Down',
-      value: 'UP/DOWN'
-    },
-    {
-      name: 'Digit Match/Differs',
-      value: 'MATCH/DIFF',
-      digits: true
-    },
-    {
-      name: 'Digit Even/Odd',
-      value: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over/Under',
-      value: 'OVER/UNDER',
-      digits: true
-    }
-  ],
-  'tradeTypes': [
-    {
-      name: 'Up',
-      value: 'CALL',
-      markets: [
-        'forex',
-        'random'
-      ],
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Down',
-      value: 'PUT',
-      markets: [
-        'forex',
-        'random'
-      ],
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Digit Match',
-      value: 'DIGITMATCH',
-      markets: ['random'],
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Differs',
-      value: 'DIGITDIFF',
-      markets: ['random'],
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Even',
-      value: 'DIGITEVEN',
-      markets: ['random'],
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Odd',
-      value: 'DIGITODD',
-      markets: ['random'],
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over',
-      value: 'DIGITOVER',
-      markets: ['random'],
-      digits: true,
-      category: 'OVER/UNDER'
-    },
-    {
-      name: 'Digit Under',
-      value: 'DIGITUNDER',
-      markets: ['random'],
-      digits: true,
-      category: 'OVER/UNDER'
-    }
-  ],
-  'language': 'en',
-  'assetIndexes': {
-    symbol: 0,
-    displayName: 1,
-    contracts: 2,
-    contractName: 0,
-    contractDisplayName: 1,
-    contractFrom: 2,
-    contractTo: 3
-  }
-});
-/**
- * @name states.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$stateProvider',
-  '$urlRouterProvider',
-  function ($stateProvider, $urlRouterProvider) {
-    $stateProvider.state('home', {
-      url: '/home',
-      templateUrl: 'templates/pages/home.html',
-      controller: 'HomeController'
-    }).state('signin', {
-      url: '/sign-in',
-      templateUrl: 'templates/pages/sign-in.html',
-      controller: 'SignInController'
-    }).state('help', {
-      url: '/help',
-      templateUrl: 'templates/pages/help.html',
-      controller: 'HelpController'
-    }).state('trade', {
-      url: '/trade',
-      cache: false,
-      templateUrl: 'templates/pages/trade.html',
-      controller: 'TradeController'
-    }).state('options', {
-      url: '/options',
-      cache: false,
-      templateUrl: 'templates/pages/options.html',
-      controller: 'OptionsController'
-    }).state('accounts', {
-      url: '/accounts',
-      cache: false,
-      templateUrl: 'templates/pages/accounts.html',
-      controller: 'AccountsController'
-    });
-    $urlRouterProvider.otherwise('/home');
-  }
-]);
-/**
- * @name translation.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$translateProvider',
-  function ($translateProvider) {
-    var language = localStorage['language'] || 'en';
-    $translateProvider.preferredLanguage(language);
-    $translateProvider.useStaticFilesLoader({
-      prefix: 'i18n/',
-      suffix: '.json'
-    });
-  }
-]);
-/**
- * @name contractSummary
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/28/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
-    };
   }
 ]);
 /**
@@ -333,6 +90,10 @@ angular.module('binary').controller('AccountsController', [
     $scope.navigateToOptionsPage = function () {
       $state.go('options', {}, { reload: true });
     };
+    if (appStateService.invalidTokenRemoved) {
+      accountService.validate();
+      appStateService.invalidTokenRemoved = false;
+    }
     $scope.logout = function () {
       alertService.confirmRemoveAllAccount(function (res) {
         if (typeof res !== 'boolean') {
@@ -519,10 +280,12 @@ angular.module('binary').controller('OptionsController', [
 angular.module('binary').controller('SignInController', [
   '$scope',
   '$state',
-  function ($scope, $state) {
+  'appStateService',
+  function ($scope, $state, appStateService) {
     if (typeof analytics !== 'undefined') {
       analytics.trackView('Singin');
     }
+    appStateService.invalidTokenRemoved = false;
     $scope.navigateToHelpPage = function () {
       $state.go('help');
     };
@@ -721,6 +484,236 @@ angular.module('binary').controller('TradeController', [
   }
 ]);
 /**
+ * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
+ *
+ * This patch works around iOS9 UIWebView regression that causes infinite digest
+ * errors in Angular.
+ *
+ * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
+ * have the workaround baked in.
+ *
+ * To apply this patch load/bundle this file with your application and add a
+ * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
+ *
+ * For example:
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute'])`
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
+ * ```
+ *
+ *
+ * More info:
+ * - https://openradar.appspot.com/22186109
+ * - https://github.com/angular/angular.js/issues/12241
+ * - https://github.com/driftyco/ionic/issues/4082
+ *
+ *
+ * @license AngularJS
+ * (c) 2010-2015 Google, Inc. http://angularjs.org
+ * License: MIT
+ */
+angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
+  '$provide',
+  function ($provide) {
+    'use strict';
+    $provide.decorator('$browser', [
+      '$delegate',
+      '$window',
+      function ($delegate, $window) {
+        if (isIOS9UIWebView($window.navigator.userAgent)) {
+          return applyIOS9Shim($delegate);
+        }
+        return $delegate;
+        function isIOS9UIWebView(userAgent) {
+          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
+        }
+        function applyIOS9Shim(browser) {
+          var pendingLocationUrl = null;
+          var originalUrlFn = browser.url;
+          browser.url = function () {
+            if (arguments.length) {
+              pendingLocationUrl = arguments[0];
+              return originalUrlFn.apply(browser, arguments);
+            }
+            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
+          };
+          window.addEventListener('popstate', clearPendingLocationUrl, false);
+          window.addEventListener('hashchange', clearPendingLocationUrl, false);
+          function clearPendingLocationUrl() {
+            pendingLocationUrl = null;
+          }
+          return browser;
+        }
+      }
+    ]);
+  }
+]);
+/**
+ * @contributors []
+ * @since 10/25/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').constant('config', {
+  'tradeCategories': [
+    {
+      name: 'Up/Down',
+      value: 'UP/DOWN'
+    },
+    {
+      name: 'Digit Matches/Differs',
+      value: 'MATCH/DIFF',
+      digits: true
+    },
+    {
+      name: 'Digit Even/Odd',
+      value: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over/Under',
+      value: 'OVER/UNDER',
+      digits: true
+    }
+  ],
+  'tradeTypes': [
+    {
+      name: 'Up',
+      value: 'CALL',
+      markets: [
+        'forex',
+        'random'
+      ],
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Down',
+      value: 'PUT',
+      markets: [
+        'forex',
+        'random'
+      ],
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Digit Match',
+      value: 'DIGITMATCH',
+      markets: ['random'],
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Differs',
+      value: 'DIGITDIFF',
+      markets: ['random'],
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Even',
+      value: 'DIGITEVEN',
+      markets: ['random'],
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Odd',
+      value: 'DIGITODD',
+      markets: ['random'],
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over',
+      value: 'DIGITOVER',
+      markets: ['random'],
+      digits: true,
+      category: 'OVER/UNDER'
+    },
+    {
+      name: 'Digit Under',
+      value: 'DIGITUNDER',
+      markets: ['random'],
+      digits: true,
+      category: 'OVER/UNDER'
+    }
+  ],
+  'language': 'en',
+  'assetIndexes': {
+    symbol: 0,
+    displayName: 1,
+    contracts: 2,
+    contractName: 0,
+    contractDisplayName: 1,
+    contractFrom: 2,
+    contractTo: 3
+  }
+});
+/**
+ * @name states.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$stateProvider',
+  '$urlRouterProvider',
+  function ($stateProvider, $urlRouterProvider) {
+    $stateProvider.state('home', {
+      url: '/home',
+      templateUrl: 'templates/pages/home.html',
+      controller: 'HomeController'
+    }).state('signin', {
+      url: '/sign-in',
+      templateUrl: 'templates/pages/sign-in.html',
+      controller: 'SignInController'
+    }).state('help', {
+      url: '/help',
+      templateUrl: 'templates/pages/help.html',
+      controller: 'HelpController'
+    }).state('trade', {
+      url: '/trade',
+      cache: false,
+      templateUrl: 'templates/pages/trade.html',
+      controller: 'TradeController'
+    }).state('options', {
+      url: '/options',
+      cache: false,
+      templateUrl: 'templates/pages/options.html',
+      controller: 'OptionsController'
+    }).state('accounts', {
+      url: '/accounts',
+      cache: false,
+      templateUrl: 'templates/pages/accounts.html',
+      controller: 'AccountsController'
+    });
+    $urlRouterProvider.otherwise('/home');
+  }
+]);
+/**
+ * @name translation.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$translateProvider',
+  function ($translateProvider) {
+    var language = localStorage['language'] || 'en';
+    $translateProvider.preferredLanguage(language);
+    $translateProvider.useStaticFilesLoader({
+      prefix: 'i18n/',
+      suffix: '.json'
+    });
+  }
+]);
+/**
  * @name accountService
  * @author Massih Hazrati
  * @contributors []
@@ -730,7 +723,8 @@ angular.module('binary').controller('TradeController', [
 angular.module('binary').service('accountService', [
   'websocketService',
   'appStateService',
-  function (websocketService, appStateService) {
+  'delayService',
+  function (websocketService, appStateService, delayService) {
     /**
 			 * find a {key,value} in an array of objects and return its index
 			 * returns -1 if not found
@@ -774,6 +768,8 @@ angular.module('binary').service('accountService', [
 			 * @param  {String} _token
 			 */
     var validate = function (_token, extraParams) {
+      //Remove the last delay queue of 'symbolsAndAssetIndexUpdate'
+      delayService.remove('symbolsAndAssetIndexUpdate');
       if (_token) {
         websocketService.authenticate(_token, extraParams);
       } else {
@@ -1045,6 +1041,7 @@ angular.module('binary').factory('appStateService', function () {
   factory.isLoggedin = false;
   factory.waitForProposal = false;
   factory.scopes = [];
+  factory.invalidTokenRemoved = false;
   return factory;
 });
 /**
@@ -2244,9 +2241,12 @@ angular.module('binary').service('languageService', [
  * @copyright Binary Ltd
  *
  */
-angular.module('binary').factory('localStorageService', function () {
-  var service = {};
-  /**
+angular.module('binary').factory('localStorageService', [
+  '$state',
+  'appStateService',
+  function ($state, appStateService) {
+    var service = {};
+    /**
 			 * find a {key,value} in an array of objects and return its index
 			 * returns -1 if not found
 			 * @param  {Array of Objects} _accounts
@@ -2254,37 +2254,57 @@ angular.module('binary').factory('localStorageService', function () {
 			 * @param  {String, Number, Boolean} _value
 			 * @return {Number} Index of the found array element
 			 */
-  var findIndex = function (_accounts, _key, _value) {
-    var index = -1;
-    _accounts.forEach(function (el, i) {
-      if (_accounts[i][_key] === _value) {
-        index = i;
+    var findIndex = function (_accounts, _key, _value) {
+      var index = -1;
+      _accounts.forEach(function (el, i) {
+        if (_accounts[i][_key] === _value) {
+          index = i;
+        }
+      });
+      return index;
+    };
+    service.removeToken = function removeToken(token) {
+      if (localStorage.hasOwnProperty('accounts')) {
+        var accounts = JSON.parse(localStorage.accounts);
+        var tokenIndex = findIndex(accounts, 'token', token);
+        if (tokenIndex > -1) {
+          accounts.splice(tokenIndex);
+          localStorage.accounts = JSON.stringify(accounts);
+        }
       }
-    });
-    return index;
-  };
-  service.removeToken = function removeToken(token) {
-    if (localStorage.hasOwnProperty('accounts')) {
-      var accounts = JSON.parse(localStorage.accounts);
-      var tokenIndex = findIndex(accounts, 'token', token);
-      if (tokenIndex > -1) {
-        accounts.splice(tokenIndex);
-        localStorage.accounts = JSON.stringify(accounts);
+    };
+    service.getDefaultToken = function () {
+      if (localStorage.accounts && JSON.parse(localStorage.accounts) instanceof Array) {
+        var accounts = JSON.parse(localStorage.accounts);
+        var index = findIndex(accounts, 'is_default', true);
+        if (index > -1) {
+          return accounts[index].token;
+        }
       }
-    }
-  };
-  service.getDefaultToken = function () {
-    if (localStorage.accounts && JSON.parse(localStorage.accounts) instanceof Array) {
-      var accounts = JSON.parse(localStorage.accounts);
-      var index = findIndex(accounts, 'is_default', true);
-      if (index > -1) {
-        return accounts[index].token;
+      return null;
+    };
+    service.manageInvalidToken = function () {
+      var defaultToken = service.getDefaultToken();
+      if (defaultToken) {
+        service.removeToken(defaultToken);
       }
-    }
-    return null;
-  };
-  return service;
-});
+      if (localStorage.hasOwnProperty('accounts')) {
+        accounts = JSON.parse(localStorage.accounts);
+        if (accounts.length) {
+          accounts[0].is_default = true;
+          localStorage.accounts = JSON.stringify(accounts);
+          appStateService.invalidTokenRemoved = true;
+          $state.go('accounts');
+        } else {
+          $state.go('signin');
+        }
+      } else {
+        $state.go('signin');
+      }
+    };
+    return service;
+  }
+]);
 /**
  * @name tradeService
  * @author Massih Hazrati
@@ -2582,7 +2602,8 @@ angular.module('binary').factory('websocketService', [
   'localStorageService',
   'alertService',
   'appStateService',
-  function ($rootScope, localStorageService, alertService, appStateService) {
+  '$state',
+  function ($rootScope, localStorageService, alertService, appStateService, $state) {
     var dataStream = '';
     var messageBuffer = [];
     var waitForConnection = function (callback) {
@@ -2655,6 +2676,11 @@ angular.module('binary').factory('websocketService', [
     var receiveMessage = function (_response) {
       var message = JSON.parse(_response.data);
       if (message) {
+        if (message.error) {
+          if (message.error.code === 'InvalidToken') {
+            localStorageService.manageInvalidToken();
+          }
+        }
         var messageType = message.msg_type;
         switch (messageType) {
         case 'authorize':
@@ -2863,6 +2889,25 @@ angular.module('binary').factory('websocketService', [
       }
     };
     return websocketService;
+  }
+]);
+/**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
+    };
   }
 ]);
 /**
@@ -3110,101 +3155,6 @@ angular.module('binary').directive('signin', [
         scope.changeLanguage = function () {
           languageService.update(scope.language);
         };
-      }
-    };
-  }
-]);
-/**
- * @name appUpdate
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/07/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('appUpdate', [
-  '$ionicPlatform',
-  function ($ionicPlatform) {
-    return {
-      scope: {},
-      restrict: 'E',
-      templateUrl: 'templates/components/codepush/app-update.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
-        };
-        // Use codepush to check new update and install it.
-        $ionicPlatform.ready(function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = true;
-          scope.progress = 0;
-          if (window.codePush) {
-            codePush.sync(function (syncStatus) {
-              scope.isShown = true;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                //alertService.displayAlert("Update","The update was installed successfully.");
-                scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            }, {
-              installMode: InstallMode.IMMEDIATE,
-              updateDialog: true
-            }, function (downloadProgress) {
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            });
-          }
-        });
       }
     };
   }
@@ -3517,6 +3467,105 @@ angular.module('binary').directive('tradeCategory', [
         }, function () {
           $ionicScrollDelegate.resize();
         }, false);
+      }
+    };
+  }
+]);
+/**
+ * @name appUpdate
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/07/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('appUpdate', [
+  '$ionicPlatform',
+  function ($ionicPlatform) {
+    return {
+      scope: {},
+      restrict: 'E',
+      templateUrl: 'templates/components/codepush/app-update.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.hide = function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = false;
+          if (!scope.$$phase && !scope.$root.$$phase) {
+            scope.$apply();
+          }
+        };
+        // Use codepush to check new update and install it.
+        $ionicPlatform.ready(function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = true;
+          scope.progress = 0;
+          if (window.codePush) {
+            codePush.sync(function (syncStatus) {
+              scope.isShown = false;
+              scope.showSpinner = false;
+              scope.isDownloading = false;
+              switch (syncStatus) {
+              // Result (final) statuses
+              case SyncStatus.UPDATE_INSTALLED:
+                scope.isShown = true;
+                scope.isDownloading = false;
+                scope.message = 'update.installed';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UP_TO_DATE:
+                //console.log("The application is up to date.");
+                scope.message = 'update.up_to_date';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UPDATE_IGNORED:
+                //alertService.displayAlert("Update","The user decided not to install the optional update.");
+                break;
+              case SyncStatus.ERROR:
+                //alertService.displayAlert("Update","An error occured while checking for updates");
+                scope.isDownloading = false;
+                scope.message = 'update.error';
+                setTimeout(scope.hide, 5000);
+                break;
+              // Intermediate (non final) statuses
+              case SyncStatus.CHECKING_FOR_UPDATE:
+                //console.log("Checking for update.");
+                scope.message = 'update.check_for_update';
+                scope.showSpinner = true;
+                break;
+              case SyncStatus.AWAITING_USER_ACTION:
+                //console.log("Alerting user.");
+                break;
+              case SyncStatus.DOWNLOADING_PACKAGE:
+                scope.isShown = true;
+                //console.log("Downloading package.");
+                scope.isDownloading = true;
+                scope.message = 'update.downloading';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.INSTALLING_UPDATE:
+                scope.isShown = true;
+                //console.log("Installing update");
+                scope.message = 'installing';
+                scope.showSpinner = true;
+                setTimeout(scope.hide, 5000);
+                break;
+              }
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            }, {
+              installMode: InstallMode.IMMEDIATE,
+              updateDialog: true
+            }, function (downloadProgress) {
+              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
+              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            });
+          }
+        });
       }
     };
   }
@@ -4016,6 +4065,17 @@ angular.module('binary').directive('stringToNumber', function () {
       });
       ngModel.$formatters.push(function (value) {
         return parseFloat(value, 10);
+      });
+      scope.$watch(function () {
+        return ngModel.$viewValue;
+      }, function (_value) {
+        var value = _value.split('.');
+        if (value.length > 1) {
+          if (value[1].length > 2) {
+            ngModel.$viewValue = value[0] + '.' + value[1].slice(0, 2);
+            ngModel.$render();
+          }
+        }
       });
     }
   };
