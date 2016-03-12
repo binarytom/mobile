@@ -64,426 +64,6 @@ angular.module('binary').run([
   }
 ]);
 /**
- * @name AccountController
- * @author Massih Hazrati
- * @contributors []
- * @since 10/19/2015
- * @copyright Binary Ltd
- * Handles user's accounts
- */
-angular.module('binary').controller('AccountsController', [
-  '$scope',
-  '$rootScope',
-  '$state',
-  '$window',
-  '$ionicPopup',
-  'websocketService',
-  'accountService',
-  'alertService',
-  'proposalService',
-  'appStateService',
-  'marketService',
-  function ($scope, $rootScope, $state, $window, $ionicPopup, websocketService, accountService, alertService, proposalService, appStateService, marketService) {
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Account Management');
-    }
-    $scope.navigateToOptionsPage = function () {
-      $state.go('options', {}, { reload: true });
-    };
-    if (appStateService.invalidTokenRemoved) {
-      accountService.validate();
-      appStateService.invalidTokenRemoved = false;
-    }
-    $scope.logout = function () {
-      alertService.confirmRemoveAllAccount(function (res) {
-        if (typeof res !== 'boolean') {
-          if (res == 1)
-            res = true;
-          else
-            res = false;
-        }
-        if (res) {
-          accountService.removeAll();
-          proposalService.remove();
-          marketService.removeActiveSymbols();
-          marketService.removeAssetIndex();
-          appStateService.isLoggedin = false;
-          $scope.$parent.$broadcast('logout');
-          $state.go('signin');
-        }
-      });
-    };
-  }
-]);
-/**
- * @name HelpController
- * @author Massih Hazrati
- * @contributors []
- * @since 10/12/2015
- * @copyright Binary Ltd
- * Handles help's functionalities (wizard/how to)
- */
-angular.module('binary').controller('HelpController', [
-  '$scope',
-  '$state',
-  function ($scope, $state) {
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Help');
-    }
-    $scope.backToSignInPage = function () {
-      $state.go('signin');
-    };
-    $scope.openExternal = function ($event) {
-      window.open($event.currentTarget.href, '_system');
-      return false;
-    };
-  }
-]);
-/**
- * @name HomeController
- * @author Massih Hazrati
- * @contributors []
- * @since 11/16/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').controller('HomeController', [
-  '$scope',
-  '$state',
-  'websocketService',
-  'accountService',
-  function ($scope, $state, websocketService, accountService) {
-    var init = function () {
-      if (typeof analytics !== 'undefined') {
-        analytics.trackView('Home');
-      }
-      websocketService.init();
-      if (accountService.hasDefault()) {
-        accountService.validate();
-      } else {
-        $state.go('signin');
-      }
-    };
-    init();
-    $scope.$on('authorize', function (e, response) {
-      if (response) {
-        $state.go('options');
-      } else {
-        $state.go('signin');
-      }
-    });
-  }
-]);
-/**
- * @name OptionsController
- * @author Massih Hazrati
- * @contributors []
- * @since 10/12/2015
- * @copyright Binary Ltd
- * Handles changing contract's options
- */
-angular.module('binary').controller('OptionsController', [
-  '$scope',
-  '$rootScope',
-  '$state',
-  '$window',
-  'config',
-  'proposalService',
-  'accountService',
-  'websocketService',
-  'chartService',
-  'delayService',
-  'appStateService',
-  function ($scope, $rootScope, $state, $window, config, proposalService, accountService, websocketService, chartService, delayService, appStateService) {
-    $scope.selected = {};
-    $scope.isDataLoaded = false;
-    $scope.letsTrade = false;
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Options');
-    }
-    websocketService.sendRequestFor.forgetAll('ticks');
-    function updateSymbols() {
-      if (!appStateService.isLoggedin) {
-        setTimeout(updateSymbols, 500);
-      } else {
-        websocketService.sendRequestFor.symbols();
-        websocketService.sendRequestFor.assetIndex();
-      }
-    }
-    delayService.update('symbolsAndAssetIndexUpdate', function () {
-      updateSymbols();
-    }, 60 * 1000);
-    function init() {
-      var proposal = proposalService.get();
-      if (proposal) {
-        $scope.selected = {
-          symbol: proposal.symbol,
-          tradeType: proposal.contract_type,
-          tick: proposal.duration,
-          basis: proposal.basis,
-          market: proposal.passthrough.market,
-          digit: proposal.digit
-        };
-        // set selected category
-        var tradeType = _.find(config.tradeTypes, [
-            'value',
-            proposal.contract_type
-          ]);
-        if (tradeType) {
-          $scope.selected.tradeCategory = tradeType.category;
-        }
-        if (proposal.barrier) {
-          $scope.selected.barrier = proposal.barrier;
-        }
-      }
-    }
-    init();
-    $scope.navigateToManageAccounts = function () {
-      $state.go('accounts');
-    };
-    $scope.navigateToTradePage = function () {
-      $state.go('trade');
-    };
-    $scope.saveChanges = function () {
-      var proposal = {
-          symbol: $scope.selected.symbol,
-          contract_type: $scope.selected.tradeType,
-          duration: $scope.selected.tick,
-          basis: $scope.selected.basis,
-          currency: accountService.getDefault().currency,
-          passthrough: { market: $scope.selected.market },
-          digit: $scope.selected.digit,
-          barrier: $scope.selected.barrier
-        };
-      proposalService.update(proposal);
-    };
-    $scope.$on('connection:reopened', function (e) {
-    });
-    $scope.$watch('selected', function (_newValue, _oldValue) {
-      if (!angular.equals(_newValue, _oldValue)) {
-        $scope.saveChanges();
-      }
-    }, true);
-    $scope.setDataLoaded = function (stopSpinner, enableLetsTrade) {
-      $scope.isDataLoaded = stopSpinner;
-      $scope.letsTrade = _.isNil(enableLetsTrade) ? stopSpinner : enableLetsTrade;
-    };
-  }
-]);
-/**
- * @name SignInController
- * @author Massih Hazrati
- * @contributors []
- * @since 10/12/2015
- * @copyright Binary Ltd
- * Handles sign-in page
- */
-angular.module('binary').controller('SignInController', [
-  '$scope',
-  '$state',
-  'appStateService',
-  function ($scope, $state, appStateService) {
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Singin');
-    }
-    appStateService.invalidTokenRemoved = false;
-    $scope.navigateToHelpPage = function () {
-      $state.go('help');
-    };
-  }
-]);
-/**
- * @name TradeController
- * @author Massih Hazrati
- * @contributors []
- * @since 10/12/2015
- * @copyright Binary Ltd
- * Handles trade's functionalities
- */
-angular.module('binary').controller('TradeController', [
-  '$scope',
-  '$state',
-  '$ionicSlideBoxDelegate',
-  'marketService',
-  'proposalService',
-  'websocketService',
-  'accountService',
-  'alertService',
-  'appStateService',
-  function ($scope, $state, $ionicSlideBoxDelegate, marketService, proposalService, websocketService, accountService, alertService, appStateService) {
-    appStateService.waitForProposal = false;
-    window.addEventListener('native.keyboardhide', function (e) {
-      $scope.hideFooter = false;
-      $scope.$apply();
-    });
-    window.addEventListener('native.keyboardshow', function (e) {
-      $scope.hideFooter = true;
-      $scope.$apply();
-    });
-    $scope.setTradeMode = function (mode) {
-      //$scope.tradeMode = mode;
-      appStateService.tradeMode = mode;
-    };
-    $scope.getTradeMode = function () {
-      return appStateService.tradeMode;
-    };
-    var init = function () {
-      if (typeof analytics !== 'undefined') {
-        analytics.trackView('Trade');
-      }
-      $scope.proposalToSend = JSON.parse(localStorage.proposal);
-      $scope.setTradeMode(true);
-      appStateService.purchaseMode = false;
-      proposalService.getCurrencies();
-    };
-    init();
-    $scope.$on('proposal', function (e, response) {
-      $scope.proposalRecieved = response;
-      appStateService.waitForProposal = false;
-      $scope.$apply();
-    });
-    $scope.$on('currencies', function (e, response) {
-      if (response && response.length > 0) {
-        $scope.currency = response[0];
-        $scope.$apply();
-        var proposal = proposalService.get();
-        if (proposal) {
-          proposal.currency = response[0];
-          proposalService.update(proposal);
-          proposalService.send();
-        }
-      }
-    });
-    websocketService.sendRequestFor.forgetAll('balance');
-    websocketService.sendRequestFor.balance();
-    $scope.$on('balance', function (e, _balance) {
-      $scope.account = _balance;
-      $scope.$apply();
-    });
-    $scope.$on('purchase', function (e, _contractConfirmation) {
-      if (_contractConfirmation.buy) {
-        $scope.setTradeMode(false);
-        appStateService.purchaseMode = true;
-        $scope.contract = {
-          contract_id: _contractConfirmation.buy.contract_id,
-          longcode: _contractConfirmation.buy.longcode,
-          payout: $scope.proposalRecieved.payout,
-          cost: _contractConfirmation.buy.buy_price,
-          profit: parseFloat($scope.proposalRecieved.payout) - parseFloat(_contractConfirmation.buy.buy_price),
-          balance: _contractConfirmation.buy.balance_after,
-          transaction_id: _contractConfirmation.buy.transaction_id
-        };
-        websocketService.sendRequestFor.portfolio();
-        $scope.$apply();
-      } else if (_contractConfirmation.error) {
-        alertService.displayError(_contractConfirmation.error.message);
-        $('.contract-purchase button').attr('disabled', false);
-        proposalService.send();
-      } else {
-        alertService.contractError.notAvailable();
-        $('.contract-purchase button').attr('disabled', false);
-      }
-      websocketService.sendRequestFor.balance();  // it's moved to first if
-                                                  // websocketService.sendRequestFor.portfolio();
-    });
-    $scope.$on('purchase:error', function (e, _error) {
-      $('.contract-purchase button').attr('disabled', false);
-      appStateService.purchaseMode = false;
-      proposalService.send();
-    });
-    $scope.$on('contract:finished', function (e, _contract) {
-      if (_contract.exitSpot) {
-        if (_contract.result === 'win') {
-          $scope.contract.buyPrice = $scope.contract.cost;
-          $scope.contract.profit = $scope.contract.profit;
-          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.profit;
-          websocketService.sendRequestFor.openContract();
-        } else if (_contract.result === 'lose') {
-          $scope.contract.buyPrice = $scope.contract.cost;
-          $scope.contract.loss = $scope.contract.cost * -1;
-          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.loss;
-        }
-        $scope.contract.result = _contract.result;
-        // Unlock view to navigate
-        appStateService.purchaseMode = false;
-        proposalService.send();
-        if (!$scope.$$phase) {
-          $scope.$apply();
-        }
-      }
-    });
-    $scope.$on('proposal:open-contract', function (e, contract) {
-      if (contract.is_expired) {
-        websocketService.sendRequestFor.sellExpiredContract();
-      }
-    });
-    $scope.navigateToOptionsPage = function ($event) {
-      $state.go('options');
-    };
-    $scope.$on('connection:ready', function (e) {
-      if (accountService.hasDefault()) {
-        accountService.validate();
-        //					websocketService.sendRequestFor.symbols();
-        //					websocketService.sendRequestFor.assetIndex();
-        $scope.proposalToSend = JSON.parse(localStorage.proposal);
-        proposalService.send();
-        if (appStateService.purchaseMode) {
-          sendProfitTableRequest();
-        }
-      }
-    });
-    $scope.$on('profit_table:update', function (e, _profitTable, _passthrough) {
-      if (_passthrough.hasOwnProperty('isConnectionReopen') && _passthrough.isConnectionReopen) {
-        if (_profitTable.count > 0) {
-          // Check that contract is finished or not after connection reopenning
-          if (appStateService.purchaseMode) {
-            // find the current contract in the portfolio-table list
-            var transaction = _.find(_profitTable.transactions, [
-                'transaction_id',
-                $scope.contract.transaction_id
-              ]);
-            if (transaction) {
-              var finishedContract = {};
-              finishedContract.exitSpot = true;
-              finishedContract.result = transaction.sell_price > 0 ? 'win' : 'lose';
-              $scope.$broadcast('contract:finished', finishedContract);
-            }
-          }
-        } else {
-          // because there is not any items in profitTable, the user is navigating to trade mode view
-          appStateService.purchaseMode = false;
-          appStateService.tradeMode = true;
-        }
-      }
-    });
-    $scope.isContractFinished = function () {
-      return !appStateService.purchaseMode;
-    };
-    $scope.getWaitForProposal = function () {
-      return appStateService.waitForProposal;
-    };
-    function sendProfitTableRequest(params) {
-      // Wait untile the login progress is finished
-      if (!appStateService.isLoggedin) {
-        setTimeout(sendProfitTableRequest, 500);
-      } else {
-        var conditions = {};
-        // Format date to 'YYYY-MM-DD'
-        conditions.date_from = new Date().toISOString().slice(0, 10);
-        conditions.date_to = conditions.date_from;
-        conditions.limit = 10;
-        conditions.passthrough = { isConnectionReopen: true };
-        websocketService.sendRequestFor.profitTable(conditions);
-      }
-    }
-    $scope.hasTradePermission = function () {
-      return accountService.checkScope([
-        'READ',
-        'TRADE'
-      ]);
-    };
-  }
-]);
-/**
  * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
  *
  * This patch works around iOS9 UIWebView regression that causes infinite digest
@@ -711,6 +291,470 @@ angular.module('binary').config([
       prefix: 'i18n/',
       suffix: '.json'
     });
+  }
+]);
+/**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
+    };
+  }
+]);
+/**
+ * @name AccountController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 10/19/2015
+ * @copyright Binary Ltd
+ * Handles user's accounts
+ */
+angular.module('binary').controller('AccountsController', [
+  '$scope',
+  '$rootScope',
+  '$state',
+  '$window',
+  '$ionicPopup',
+  'websocketService',
+  'accountService',
+  'alertService',
+  'proposalService',
+  'appStateService',
+  'marketService',
+  function ($scope, $rootScope, $state, $window, $ionicPopup, websocketService, accountService, alertService, proposalService, appStateService, marketService) {
+    if (typeof analytics !== 'undefined') {
+      analytics.trackView('Account Management');
+    }
+    $scope.navigateToOptionsPage = function () {
+      $state.go('options', {}, { reload: true });
+    };
+    if (appStateService.invalidTokenRemoved) {
+      accountService.validate();
+      appStateService.invalidTokenRemoved = false;
+    }
+    $scope.logout = function () {
+      alertService.confirmRemoveAllAccount(function (res) {
+        if (typeof res !== 'boolean') {
+          if (res == 1)
+            res = true;
+          else
+            res = false;
+        }
+        if (res) {
+          accountService.removeAll();
+          proposalService.remove();
+          marketService.removeActiveSymbols();
+          marketService.removeAssetIndex();
+          appStateService.isLoggedin = false;
+          $scope.$parent.$broadcast('logout');
+          $state.go('signin');
+        }
+      });
+    };
+  }
+]);
+/**
+ * @name HomeController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/16/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').controller('BodyController', [
+  '$scope',
+  'languageService',
+  function ($scope, languageService) {
+    $scope.getLanguage = function () {
+      return languageService.read();
+    };
+  }
+]);
+/**
+ * @name HelpController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 10/12/2015
+ * @copyright Binary Ltd
+ * Handles help's functionalities (wizard/how to)
+ */
+angular.module('binary').controller('HelpController', [
+  '$scope',
+  '$state',
+  'languageService',
+  function ($scope, $state, languageService) {
+    var language = languageService.read();
+    $scope.tokenUrl = 'https://www.binary.com/user/api_tokenws?l=' + language.toUpperCase();
+    if (typeof analytics !== 'undefined') {
+      analytics.trackView('Help');
+    }
+    $scope.backToSignInPage = function () {
+      $state.go('signin');
+    };
+    $scope.openExternal = function ($event) {
+      window.open($event.currentTarget.href, '_system');
+      return false;
+    };
+  }
+]);
+/**
+ * @name HomeController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/16/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').controller('HomeController', [
+  '$scope',
+  '$state',
+  'websocketService',
+  'accountService',
+  function ($scope, $state, websocketService, accountService) {
+    var init = function () {
+      if (typeof analytics !== 'undefined') {
+        analytics.trackView('Home');
+      }
+      websocketService.init();
+      if (accountService.hasDefault()) {
+        accountService.validate();
+      } else {
+        $state.go('signin');
+      }
+    };
+    init();
+    $scope.$on('authorize', function (e, response) {
+      if (response) {
+        $state.go('options');
+      } else {
+        $state.go('signin');
+      }
+    });
+  }
+]);
+/**
+ * @name OptionsController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 10/12/2015
+ * @copyright Binary Ltd
+ * Handles changing contract's options
+ */
+angular.module('binary').controller('OptionsController', [
+  '$scope',
+  '$rootScope',
+  '$state',
+  '$window',
+  'config',
+  'proposalService',
+  'accountService',
+  'websocketService',
+  'chartService',
+  'delayService',
+  'appStateService',
+  function ($scope, $rootScope, $state, $window, config, proposalService, accountService, websocketService, chartService, delayService, appStateService) {
+    $scope.selected = {};
+    $scope.isDataLoaded = false;
+    $scope.letsTrade = false;
+    if (typeof analytics !== 'undefined') {
+      analytics.trackView('Options');
+    }
+    websocketService.sendRequestFor.forgetAll('ticks');
+    function updateSymbols() {
+      if (!appStateService.isLoggedin) {
+        setTimeout(updateSymbols, 500);
+      } else {
+        websocketService.sendRequestFor.symbols();
+        websocketService.sendRequestFor.assetIndex();
+      }
+    }
+    delayService.update('symbolsAndAssetIndexUpdate', function () {
+      updateSymbols();
+    }, 60 * 1000);
+    function init() {
+      var proposal = proposalService.get();
+      if (proposal) {
+        $scope.selected = {
+          symbol: proposal.symbol,
+          tradeType: proposal.contract_type,
+          tick: proposal.duration,
+          basis: proposal.basis,
+          market: proposal.passthrough.market,
+          digit: proposal.digit
+        };
+        // set selected category
+        var tradeType = _.find(config.tradeTypes, [
+            'value',
+            proposal.contract_type
+          ]);
+        if (tradeType) {
+          $scope.selected.tradeCategory = tradeType.category;
+        }
+        if (proposal.barrier) {
+          $scope.selected.barrier = proposal.barrier;
+        }
+      }
+    }
+    init();
+    $scope.navigateToManageAccounts = function () {
+      $state.go('accounts');
+    };
+    $scope.navigateToTradePage = function () {
+      $state.go('trade');
+    };
+    $scope.saveChanges = function () {
+      var proposal = {
+          symbol: $scope.selected.symbol,
+          contract_type: $scope.selected.tradeType,
+          duration: $scope.selected.tick,
+          basis: $scope.selected.basis,
+          currency: accountService.getDefault().currency,
+          passthrough: { market: $scope.selected.market },
+          digit: $scope.selected.digit,
+          barrier: $scope.selected.barrier
+        };
+      proposalService.update(proposal);
+    };
+    $scope.$on('connection:reopened', function (e) {
+    });
+    $scope.$watch('selected', function (_newValue, _oldValue) {
+      if (!angular.equals(_newValue, _oldValue)) {
+        $scope.saveChanges();
+      }
+    }, true);
+    $scope.setDataLoaded = function (stopSpinner, enableLetsTrade) {
+      $scope.isDataLoaded = stopSpinner;
+      $scope.letsTrade = _.isNil(enableLetsTrade) ? stopSpinner : enableLetsTrade;
+    };
+    $scope.hasTradePermission = function () {
+      return accountService.checkScope([
+        'READ',
+        'TRADE'
+      ]);
+    };
+  }
+]);
+/**
+ * @name SignInController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 10/12/2015
+ * @copyright Binary Ltd
+ * Handles sign-in page
+ */
+angular.module('binary').controller('SignInController', [
+  '$scope',
+  '$state',
+  'appStateService',
+  function ($scope, $state, appStateService) {
+    if (typeof analytics !== 'undefined') {
+      analytics.trackView('Singin');
+    }
+    appStateService.invalidTokenRemoved = false;
+    $scope.navigateToHelpPage = function () {
+      $state.go('help');
+    };
+  }
+]);
+/**
+ * @name TradeController
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 10/12/2015
+ * @copyright Binary Ltd
+ * Handles trade's functionalities
+ */
+angular.module('binary').controller('TradeController', [
+  '$scope',
+  '$state',
+  '$ionicSlideBoxDelegate',
+  'marketService',
+  'proposalService',
+  'websocketService',
+  'accountService',
+  'alertService',
+  'appStateService',
+  function ($scope, $state, $ionicSlideBoxDelegate, marketService, proposalService, websocketService, accountService, alertService, appStateService) {
+    appStateService.waitForProposal = false;
+    window.addEventListener('native.keyboardhide', function (e) {
+      $scope.hideFooter = false;
+      $scope.$apply();
+    });
+    window.addEventListener('native.keyboardshow', function (e) {
+      $scope.hideFooter = true;
+      $scope.$apply();
+    });
+    $scope.setTradeMode = function (mode) {
+      //$scope.tradeMode = mode;
+      appStateService.tradeMode = mode;
+    };
+    $scope.getTradeMode = function () {
+      return appStateService.tradeMode;
+    };
+    var init = function () {
+      if (typeof analytics !== 'undefined') {
+        analytics.trackView('Trade');
+      }
+      $scope.proposalToSend = JSON.parse(localStorage.proposal);
+      $scope.setTradeMode(true);
+      appStateService.purchaseMode = false;
+      proposalService.getCurrencies();
+    };
+    init();
+    $scope.$on('proposal', function (e, response) {
+      $scope.proposalRecieved = response;
+      appStateService.waitForProposal = false;
+      $scope.$apply();
+    });
+    $scope.$on('currencies', function (e, response) {
+      if (response && response.length > 0) {
+        $scope.currency = response[0];
+        $scope.$apply();
+        var proposal = proposalService.get();
+        if (proposal) {
+          proposal.currency = response[0];
+          proposalService.update(proposal);
+          proposalService.send();
+        }
+      }
+    });
+    websocketService.sendRequestFor.forgetAll('balance');
+    websocketService.sendRequestFor.balance();
+    $scope.$on('balance', function (e, _balance) {
+      $scope.account = _balance;
+      $scope.$apply();
+    });
+    $scope.$on('purchase', function (e, _contractConfirmation) {
+      if (_contractConfirmation.buy) {
+        $scope.setTradeMode(false);
+        appStateService.purchaseMode = true;
+        $scope.contract = {
+          contract_id: _contractConfirmation.buy.contract_id,
+          longcode: _contractConfirmation.buy.longcode,
+          payout: $scope.proposalRecieved.payout,
+          cost: _contractConfirmation.buy.buy_price,
+          profit: parseFloat($scope.proposalRecieved.payout) - parseFloat(_contractConfirmation.buy.buy_price),
+          balance: _contractConfirmation.buy.balance_after,
+          transaction_id: _contractConfirmation.buy.transaction_id
+        };
+        websocketService.sendRequestFor.portfolio();
+        $scope.$apply();
+      } else if (_contractConfirmation.error) {
+        alertService.displayError(_contractConfirmation.error.message);
+        $('.contract-purchase button').attr('disabled', false);
+        proposalService.send();
+      } else {
+        alertService.contractError.notAvailable();
+        $('.contract-purchase button').attr('disabled', false);
+      }
+      websocketService.sendRequestFor.balance();  // it's moved to first if
+                                                  // websocketService.sendRequestFor.portfolio();
+    });
+    $scope.$on('purchase:error', function (e, _error) {
+      $('.contract-purchase button').attr('disabled', false);
+      appStateService.purchaseMode = false;
+      proposalService.send();
+    });
+    $scope.$on('contract:finished', function (e, _contract) {
+      if (_contract.exitSpot) {
+        if (_contract.result === 'win') {
+          $scope.contract.buyPrice = $scope.contract.cost;
+          $scope.contract.profit = $scope.contract.profit;
+          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.profit;
+          websocketService.sendRequestFor.openContract();
+        } else if (_contract.result === 'lose') {
+          $scope.contract.buyPrice = $scope.contract.cost;
+          $scope.contract.loss = $scope.contract.cost * -1;
+          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.loss;
+        }
+        $scope.contract.result = _contract.result;
+        // Unlock view to navigate
+        appStateService.purchaseMode = false;
+        proposalService.send();
+        if (!$scope.$$phase) {
+          $scope.$apply();
+        }
+      }
+    });
+    $scope.$on('proposal:open-contract', function (e, contract) {
+      if (contract.is_expired) {
+        websocketService.sendRequestFor.sellExpiredContract();
+      }
+    });
+    $scope.navigateToOptionsPage = function ($event) {
+      $state.go('options');
+    };
+    $scope.$on('connection:ready', function (e) {
+      if (accountService.hasDefault()) {
+        accountService.validate();
+        //					websocketService.sendRequestFor.symbols();
+        //					websocketService.sendRequestFor.assetIndex();
+        $scope.proposalToSend = JSON.parse(localStorage.proposal);
+        proposalService.send();
+        if (appStateService.purchaseMode) {
+          sendProfitTableRequest();
+        }
+      }
+    });
+    $scope.$on('profit_table:update', function (e, _profitTable, _passthrough) {
+      if (_passthrough.hasOwnProperty('isConnectionReopen') && _passthrough.isConnectionReopen) {
+        if (_profitTable.count > 0) {
+          // Check that contract is finished or not after connection reopenning
+          if (appStateService.purchaseMode) {
+            // find the current contract in the portfolio-table list
+            var transaction = _.find(_profitTable.transactions, [
+                'transaction_id',
+                $scope.contract.transaction_id
+              ]);
+            if (transaction) {
+              var finishedContract = {};
+              finishedContract.exitSpot = true;
+              finishedContract.result = transaction.sell_price > 0 ? 'win' : 'lose';
+              $scope.$broadcast('contract:finished', finishedContract);
+            }
+          }
+        } else {
+          // because there is not any items in profitTable, the user is navigating to trade mode view
+          appStateService.purchaseMode = false;
+          appStateService.tradeMode = true;
+        }
+      }
+    });
+    $scope.isContractFinished = function () {
+      return !appStateService.purchaseMode;
+    };
+    $scope.getWaitForProposal = function () {
+      return appStateService.waitForProposal;
+    };
+    function sendProfitTableRequest(params) {
+      // Wait untile the login progress is finished
+      if (!appStateService.isLoggedin) {
+        setTimeout(sendProfitTableRequest, 500);
+      } else {
+        var conditions = {};
+        // Format date to 'YYYY-MM-DD'
+        conditions.date_from = new Date().toISOString().slice(0, 10);
+        conditions.date_to = conditions.date_from;
+        conditions.limit = 10;
+        conditions.passthrough = { isConnectionReopen: true };
+        websocketService.sendRequestFor.profitTable(conditions);
+      }
+    }
+    $scope.hasTradePermission = function () {
+      return accountService.checkScope([
+        'READ',
+        'TRADE'
+      ]);
+    };
   }
 ]);
 /**
@@ -2892,25 +2936,6 @@ angular.module('binary').factory('websocketService', [
   }
 ]);
 /**
- * @name contractSummary
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/28/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
-    };
-  }
-]);
-/**
  * @name changeAccount
  * @author Massih Hazrati
  * @contributors []
@@ -3015,12 +3040,20 @@ angular.module('binary').directive('manageAccounts', [
             scope.$apply();
           }
         });
+        var cleanLocalData = function () {
+          // Clearing local data
+          proposalService.remove();
+          marketService.removeActiveSymbols();
+          marketService.removeAssetIndex();
+          appStateService.isLoggedin = false;
+        };
         scope.addAccount = function (_token) {
           requestId = new Date().getTime();
           scope.showSpinner = false;
           // Validate the token
           if (_token && _token.length === 15) {
             scope.showSpinner = true;
+            cleanLocalData();
             accountService.validate(_token, { req_id: requestId });
           } else {
             alertService.accountError.tokenNotValid();
@@ -3032,10 +3065,7 @@ angular.module('binary').directive('manageAccounts', [
         scope.setAccountAsDefault = function (_token) {
           requestId = new Date().getTime();
           scope.settingDefault = true;
-          proposalService.remove();
-          marketService.removeActiveSymbols();
-          marketService.removeAssetIndex();
-          appStateService.isLoggedin = false;
+          cleanLocalData();
           accountService.setDefault(_token);
           accountService.validate(null, { req_id: requestId });
           scope.accounts = accountService.getAll();
@@ -3245,7 +3275,7 @@ angular.module('binary').directive('marketsOption', [
     return {
       restrict: 'E',
       templateUrl: 'templates/components/options/markets.template.html',
-      link: function (scope, element) {
+      link: function (scope, element, attrs) {
         scope.showSymbolWarning = true;
         /**
 				 * Get all symbols for the selected market
@@ -3310,6 +3340,12 @@ angular.module('binary').directive('marketsOption', [
           scope.$parent.selected.market = _market;
           updateSymbols(scope.$parent.selected.market);
         };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
       }
     };
   }
@@ -3327,10 +3363,16 @@ angular.module('binary').directive('payoutStakeOption', [
     return {
       restrict: 'E',
       templateUrl: 'templates/components/options/payout-stake.template.html',
-      link: function (scope, element) {
+      link: function (scope, element, attrs) {
         scope.$parent.selected.basis = marketService.getDefault.basis();
         scope.updateBasis = function (_basis) {
           scope.$parent.selected.basis = _basis;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
         };
       }
     };
@@ -3351,7 +3393,7 @@ angular.module('binary').directive('symbolsOption', [
     return {
       restrict: 'E',
       templateUrl: 'templates/components/options/symbols.template.html',
-      link: function (scope, element) {
+      link: function (scope, element, attrs) {
         scope.tradeTypes = config.tradeTypes;
         scope.$on('symbol', function (e, _symbol) {
           if (!_.isEmpty(_symbol)) {
@@ -3371,6 +3413,12 @@ angular.module('binary').directive('symbolsOption', [
           scope.$parent.selected.symbol = _selectedSymbol;
           marketService.getSymbolDetails(scope.$parent.selected.symbol);
         };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
       }
     };
   }
@@ -3388,7 +3436,7 @@ angular.module('binary').directive('ticksOption', [
     return {
       restrict: 'E',
       templateUrl: 'templates/components/options/ticks.template.html',
-      link: function (scope, element) {
+      link: function (scope, element, attrs) {
         scope.ticks = [
           5,
           6,
@@ -3400,6 +3448,12 @@ angular.module('binary').directive('ticksOption', [
         scope.$parent.selected.tick = marketService.getDefault.tick();
         scope.updateTick = function (_tick) {
           scope.$parent.selected.tick = _tick;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
         };
       }
     };
@@ -3420,7 +3474,7 @@ angular.module('binary').directive('tradeCategory', [
     return {
       restrict: 'E',
       templateUrl: 'templates/components/options/trade-category.template.html',
-      link: function (scope, element) {
+      link: function (scope, element, attrs) {
         scope.tradeCategories = config.tradeCategories;
         scope.$parent.$watch('scope.tradeTypes', function (_newValue, _oldValue) {
           var categories = Object.keys(_.groupBy(_newValue, 'category'));
@@ -3460,6 +3514,12 @@ angular.module('binary').directive('tradeCategory', [
               scope.$parent.selected.digit = 0;
             }
           }
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
         };
         scope.$parent.$watch(function () {
           var digitsVisible = angular.element(document).find('digits-option').hasClass('ng-hide');
@@ -3745,21 +3805,17 @@ angular.module('binary').directive('purchase', [
           $('.contract-purchase button').attr('disabled', true);
           appStateService.purchaseMode = true;
           websocketService.sendRequestFor.purchase(scope.$parent.proposalRecieved.id, scope.$parent.proposalRecieved.ask_price);
+          var proposal = JSON.parse(localStorage.proposal);
           // Send statistic to Google Analytics
           if (typeof analytics !== 'undefined') {
-            var proposal = JSON.parse(localStorage.proposal);
             analytics.trackEvent(scope.$parent.account.loginid, proposal.symbol, proposal.contract_type, scope.$parent.proposalRecieved.payout);
+          } else {
+            // Send statistic to Amplitude
+            amplitude.logEvent('user id: ' + scope.$parent.account.loginid + '\r\n' + 'Symbol: ' + proposal.symbol + '\r\n' + 'TradeType: ' + proposal.contract_type + '\r\n' + 'Payout: ' + scope.$parent.proposalRecieved.payout + '\r\n' + 'AskPrice: ' + scope.$parent.proposalRecieved.ask_price);
           }
         };
         scope.getNgDisabled = function () {
           if (scope.attrs['ngDisabled']) {
-            //                        if(scope.attrs['ngDisabled'][0] != '!'){
-            //                            return eval('scope.' + scope.attrs['ngDisabled']);
-            //                        }
-            //                        else{
-            //                            return eval('!scope.' + scope.attrs['ngDisabled'].slice(1, scope.attrs['ngDisabled'].length));
-            //                        }
-            //
             return scope.$eval(scope.attrs['ngDisabled']);
           }
           return false;
@@ -3818,7 +3874,7 @@ angular.module('binary').directive('tradeContractChart', [
                 chartService.addContract({
                   startTime: contract.date_start + 1,
                   duration: parseInt(scope.$parent.proposalToSend.duration),
-                  type: scope.$parent.proposalToSend.contract_type,
+                  type: contract.contract_type,
                   barrier: scope.$parent.proposalToSend.barrier
                 });
               }
