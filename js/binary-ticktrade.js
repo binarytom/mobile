@@ -660,6 +660,21 @@ angular.module('binary').controller('TradeController', [
         $scope.contract.result = _contract.result;
         // Unlock view to navigate
         appStateService.purchaseMode = false;
+        var proposal = JSON.parse(localStorage.proposal);
+        // Send statistic to Google Analytics
+        if (typeof analytics !== 'undefined') {
+          analytics.trackEvent($scope.account.loginid, proposal.symbol, proposal.contract_type, $scope.proposalRecieved.payout, _contract.result === 'lose' ? 'Lost' : 'Won');
+        } else {
+          var ampEventProperties = {
+              Symbol: proposal.symbol,
+              TradeType: proposal.contract_type,
+              Stake: proposal.basis === 'payout' ? $scope.proposalRecieved.ask_price : proposal.ammount,
+              Market: proposal.passthrough.market,
+              result: _contract.result === 'lose' ? 'Lost' : 'Won'
+            };
+          // Send statistic to Amplitude
+          amplitude.logEvent('Purchase', ampEventProperties);
+        }
         proposalService.send();
         if (!$scope.$$phase) {
           $scope.$apply();
@@ -677,8 +692,6 @@ angular.module('binary').controller('TradeController', [
     $scope.$on('connection:ready', function (e) {
       if (accountService.hasDefault()) {
         accountService.validate();
-        //					websocketService.sendRequestFor.symbols();
-        //					websocketService.sendRequestFor.assetIndex();
         $scope.proposalToSend = JSON.parse(localStorage.proposal);
         proposalService.send();
         if (appStateService.purchaseMode) {
@@ -2733,6 +2746,7 @@ angular.module('binary').factory('websocketService', [
             window._trackJs.userId = message.authorize.loginid;
             appStateService.isLoggedin = true;
             appStateService.scopes = message.authorize.scopes;
+            amplitude.setUserId(message.authorize.loginid);
             $rootScope.$broadcast('authorize', message.authorize, message['req_id'], message['passthrough']);
           } else {
             if (message.hasOwnProperty('error') && message.error.code === 'InvalidToken') {
@@ -2933,105 +2947,6 @@ angular.module('binary').factory('websocketService', [
       }
     };
     return websocketService;
-  }
-]);
-/**
- * @name appUpdate
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/07/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('appUpdate', [
-  '$ionicPlatform',
-  function ($ionicPlatform) {
-    return {
-      scope: {},
-      restrict: 'E',
-      templateUrl: 'templates/components/codepush/app-update.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
-        };
-        // Use codepush to check new update and install it.
-        $ionicPlatform.ready(function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = true;
-          scope.progress = 0;
-          if (window.codePush) {
-            codePush.sync(function (syncStatus) {
-              scope.isShown = false;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                scope.isShown = true;
-                scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                scope.isShown = true;
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                scope.isShown = true;
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                setTimeout(scope.hide, 5000);
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            }, {
-              installMode: InstallMode.IMMEDIATE,
-              updateDialog: true
-            }, function (downloadProgress) {
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            });
-          }
-        });
-      }
-    };
   }
 ]);
 /**
@@ -3805,14 +3720,6 @@ angular.module('binary').directive('purchase', [
           $('.contract-purchase button').attr('disabled', true);
           appStateService.purchaseMode = true;
           websocketService.sendRequestFor.purchase(scope.$parent.proposalRecieved.id, scope.$parent.proposalRecieved.ask_price);
-          var proposal = JSON.parse(localStorage.proposal);
-          // Send statistic to Google Analytics
-          if (typeof analytics !== 'undefined') {
-            analytics.trackEvent(scope.$parent.account.loginid, proposal.symbol, proposal.contract_type, scope.$parent.proposalRecieved.payout);
-          } else {
-            // Send statistic to Amplitude
-            amplitude.logEvent('user id: ' + scope.$parent.account.loginid + '\r\n' + 'Symbol: ' + proposal.symbol + '\r\n' + 'TradeType: ' + proposal.contract_type + '\r\n' + 'Payout: ' + scope.$parent.proposalRecieved.payout + '\r\n' + 'AskPrice: ' + scope.$parent.proposalRecieved.ask_price);
-          }
         };
         scope.getNgDisabled = function () {
           if (scope.attrs['ngDisabled']) {
@@ -4136,3 +4043,102 @@ angular.module('binary').directive('stringToNumber', function () {
     }
   };
 });
+/**
+ * @name appUpdate
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/07/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('appUpdate', [
+  '$ionicPlatform',
+  function ($ionicPlatform) {
+    return {
+      scope: {},
+      restrict: 'E',
+      templateUrl: 'templates/components/codepush/app-update.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.hide = function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = false;
+          if (!scope.$$phase && !scope.$root.$$phase) {
+            scope.$apply();
+          }
+        };
+        // Use codepush to check new update and install it.
+        $ionicPlatform.ready(function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = true;
+          scope.progress = 0;
+          if (window.codePush) {
+            codePush.sync(function (syncStatus) {
+              scope.isShown = false;
+              scope.showSpinner = false;
+              scope.isDownloading = false;
+              switch (syncStatus) {
+              // Result (final) statuses
+              case SyncStatus.UPDATE_INSTALLED:
+                scope.isShown = true;
+                scope.isDownloading = false;
+                scope.message = 'update.installed';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UP_TO_DATE:
+                //console.log("The application is up to date.");
+                scope.message = 'update.up_to_date';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UPDATE_IGNORED:
+                //alertService.displayAlert("Update","The user decided not to install the optional update.");
+                break;
+              case SyncStatus.ERROR:
+                //alertService.displayAlert("Update","An error occured while checking for updates");
+                scope.isDownloading = false;
+                scope.message = 'update.error';
+                setTimeout(scope.hide, 5000);
+                break;
+              // Intermediate (non final) statuses
+              case SyncStatus.CHECKING_FOR_UPDATE:
+                //console.log("Checking for update.");
+                scope.message = 'update.check_for_update';
+                scope.showSpinner = true;
+                break;
+              case SyncStatus.AWAITING_USER_ACTION:
+                //console.log("Alerting user.");
+                break;
+              case SyncStatus.DOWNLOADING_PACKAGE:
+                scope.isShown = true;
+                //console.log("Downloading package.");
+                scope.isDownloading = true;
+                scope.message = 'update.downloading';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.INSTALLING_UPDATE:
+                scope.isShown = true;
+                //console.log("Installing update");
+                scope.message = 'installing';
+                scope.showSpinner = true;
+                setTimeout(scope.hide, 5000);
+                break;
+              }
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            }, {
+              installMode: InstallMode.IMMEDIATE,
+              updateDialog: true
+            }, function (downloadProgress) {
+              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
+              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            });
+          }
+        });
+      }
+    };
+  }
+]);
