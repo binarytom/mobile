@@ -66,249 +66,6 @@ angular.module('binary').run([
   }
 ]);
 /**
- * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
- *
- * This patch works around iOS9 UIWebView regression that causes infinite digest
- * errors in Angular.
- *
- * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
- * have the workaround baked in.
- *
- * To apply this patch load/bundle this file with your application and add a
- * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
- *
- * For example:
- *
- * ```
- * angular.module('myApp', ['ngRoute'])`
- * ```
- *
- * becomes
- *
- * ```
- * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
- * ```
- *
- *
- * More info:
- * - https://openradar.appspot.com/22186109
- * - https://github.com/angular/angular.js/issues/12241
- * - https://github.com/driftyco/ionic/issues/4082
- *
- *
- * @license AngularJS
- * (c) 2010-2015 Google, Inc. http://angularjs.org
- * License: MIT
- */
-angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
-  '$provide',
-  function ($provide) {
-    'use strict';
-    $provide.decorator('$browser', [
-      '$delegate',
-      '$window',
-      function ($delegate, $window) {
-        if (isIOS9UIWebView($window.navigator.userAgent)) {
-          return applyIOS9Shim($delegate);
-        }
-        return $delegate;
-        function isIOS9UIWebView(userAgent) {
-          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
-        }
-        function applyIOS9Shim(browser) {
-          var pendingLocationUrl = null;
-          var originalUrlFn = browser.url;
-          browser.url = function () {
-            if (arguments.length) {
-              pendingLocationUrl = arguments[0];
-              return originalUrlFn.apply(browser, arguments);
-            }
-            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
-          };
-          window.addEventListener('popstate', clearPendingLocationUrl, false);
-          window.addEventListener('hashchange', clearPendingLocationUrl, false);
-          function clearPendingLocationUrl() {
-            pendingLocationUrl = null;
-          }
-          return browser;
-        }
-      }
-    ]);
-  }
-]);
-/**
- * @contributors []
- * @since 10/25/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').constant('config', {
-  'app_id': 'id-ct9oK1jjUNyxvPKYNdqJxuGX7bHvJ',
-  'wsUrl': 'wss://ws.binaryws.com/websockets/v3?l=',
-  'oauthUrl': 'https://www.binary.com/oauth2/authorize',
-  'tradeCategories': [
-    {
-      name: 'Up/Down',
-      markets: [
-        'forex',
-        'volidx',
-        'random'
-      ],
-      value: 'UP/DOWN'
-    },
-    {
-      name: 'Digit Matches/Differs',
-      value: 'MATCH/DIFF',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    },
-    {
-      name: 'Digit Even/Odd',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      value: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over/Under',
-      value: 'OVER/UNDER',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    }
-  ],
-  'tradeTypes': [
-    {
-      name: 'Up',
-      value: 'CALL',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Down',
-      value: 'PUT',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Digit Match',
-      value: 'DIGITMATCH',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Differs',
-      value: 'DIGITDIFF',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Even',
-      value: 'DIGITEVEN',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Odd',
-      value: 'DIGITODD',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over',
-      value: 'DIGITOVER',
-      digits: true,
-      category: 'OVER/UNDER'
-    },
-    {
-      name: 'Digit Under',
-      value: 'DIGITUNDER',
-      digits: true,
-      category: 'OVER/UNDER'
-    }
-  ],
-  'language': 'en',
-  'assetIndexes': {
-    symbol: 0,
-    displayName: 1,
-    contracts: 2,
-    contractName: 0,
-    contractDisplayName: 1,
-    contractFrom: 2,
-    contractTo: 3
-  }
-});
-/**
- * @name states.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$stateProvider',
-  '$urlRouterProvider',
-  function ($stateProvider, $urlRouterProvider) {
-    $stateProvider.state('home', {
-      url: '/home',
-      cache: false,
-      templateUrl: 'templates/pages/home.html',
-      controller: 'HomeController'
-    }).state('signin', {
-      url: '/sign-in',
-      cache: false,
-      templateUrl: 'templates/pages/sign-in.html',
-      controller: 'SignInController'
-    }).state('help', {
-      url: '/help',
-      templateUrl: 'templates/pages/help.html',
-      controller: 'HelpController'
-    }).state('trade', {
-      url: '/trade',
-      cache: false,
-      templateUrl: 'templates/pages/trade.html',
-      controller: 'TradeController'
-    }).state('options', {
-      url: '/options',
-      cache: false,
-      templateUrl: 'templates/pages/options.html',
-      controller: 'OptionsController'
-    }).state('accounts', {
-      url: '/accounts',
-      cache: false,
-      templateUrl: 'templates/pages/accounts.html',
-      controller: 'AccountsController'
-    }).state('redirect', {
-      url: '/redirect',
-      cache: false,
-      templateUrl: 'templates/pages/oauth-redirect.template.html',
-      controller: 'OAuthRedirect'
-    });
-    $urlRouterProvider.otherwise('/home');
-  }
-]);
-/**
- * @name translation.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$translateProvider',
-  function ($translateProvider) {
-    var language = localStorage['language'] || 'en';
-    $translateProvider.preferredLanguage(language);
-    $translateProvider.useStaticFilesLoader({
-      prefix: 'i18n/',
-      suffix: '.json'
-    });
-  }
-]);
-/**
  * @name AccountController
  * @author Massih Hazrati
  * @contributors []
@@ -800,6 +557,249 @@ angular.module('binary').controller('TradeController', [
         'TRADE'
       ]);
     };
+  }
+]);
+/**
+ * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
+ *
+ * This patch works around iOS9 UIWebView regression that causes infinite digest
+ * errors in Angular.
+ *
+ * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
+ * have the workaround baked in.
+ *
+ * To apply this patch load/bundle this file with your application and add a
+ * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
+ *
+ * For example:
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute'])`
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
+ * ```
+ *
+ *
+ * More info:
+ * - https://openradar.appspot.com/22186109
+ * - https://github.com/angular/angular.js/issues/12241
+ * - https://github.com/driftyco/ionic/issues/4082
+ *
+ *
+ * @license AngularJS
+ * (c) 2010-2015 Google, Inc. http://angularjs.org
+ * License: MIT
+ */
+angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
+  '$provide',
+  function ($provide) {
+    'use strict';
+    $provide.decorator('$browser', [
+      '$delegate',
+      '$window',
+      function ($delegate, $window) {
+        if (isIOS9UIWebView($window.navigator.userAgent)) {
+          return applyIOS9Shim($delegate);
+        }
+        return $delegate;
+        function isIOS9UIWebView(userAgent) {
+          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
+        }
+        function applyIOS9Shim(browser) {
+          var pendingLocationUrl = null;
+          var originalUrlFn = browser.url;
+          browser.url = function () {
+            if (arguments.length) {
+              pendingLocationUrl = arguments[0];
+              return originalUrlFn.apply(browser, arguments);
+            }
+            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
+          };
+          window.addEventListener('popstate', clearPendingLocationUrl, false);
+          window.addEventListener('hashchange', clearPendingLocationUrl, false);
+          function clearPendingLocationUrl() {
+            pendingLocationUrl = null;
+          }
+          return browser;
+        }
+      }
+    ]);
+  }
+]);
+/**
+ * @contributors []
+ * @since 10/25/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').constant('config', {
+  'app_id': 'id-ct9oK1jjUNyxvPKYNdqJxuGX7bHvJ',
+  'wsUrl': 'wss://ws.binaryws.com/websockets/v3?l=',
+  'oauthUrl': 'https://www.binary.com/oauth2/authorize',
+  'tradeCategories': [
+    {
+      name: 'Up/Down',
+      markets: [
+        'forex',
+        'volidx',
+        'random'
+      ],
+      value: 'UP/DOWN'
+    },
+    {
+      name: 'Digit Matches/Differs',
+      value: 'MATCH/DIFF',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    },
+    {
+      name: 'Digit Even/Odd',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      value: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over/Under',
+      value: 'OVER/UNDER',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    }
+  ],
+  'tradeTypes': [
+    {
+      name: 'Up',
+      value: 'CALL',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Down',
+      value: 'PUT',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Digit Match',
+      value: 'DIGITMATCH',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Differs',
+      value: 'DIGITDIFF',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Even',
+      value: 'DIGITEVEN',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Odd',
+      value: 'DIGITODD',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over',
+      value: 'DIGITOVER',
+      digits: true,
+      category: 'OVER/UNDER'
+    },
+    {
+      name: 'Digit Under',
+      value: 'DIGITUNDER',
+      digits: true,
+      category: 'OVER/UNDER'
+    }
+  ],
+  'language': 'en',
+  'assetIndexes': {
+    symbol: 0,
+    displayName: 1,
+    contracts: 2,
+    contractName: 0,
+    contractDisplayName: 1,
+    contractFrom: 2,
+    contractTo: 3
+  }
+});
+/**
+ * @name states.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$stateProvider',
+  '$urlRouterProvider',
+  function ($stateProvider, $urlRouterProvider) {
+    $stateProvider.state('home', {
+      url: '/home',
+      cache: false,
+      templateUrl: 'templates/pages/home.html',
+      controller: 'HomeController'
+    }).state('signin', {
+      url: '/sign-in',
+      cache: false,
+      templateUrl: 'templates/pages/sign-in.html',
+      controller: 'SignInController'
+    }).state('help', {
+      url: '/help',
+      templateUrl: 'templates/pages/help.html',
+      controller: 'HelpController'
+    }).state('trade', {
+      url: '/trade',
+      cache: false,
+      templateUrl: 'templates/pages/trade.html',
+      controller: 'TradeController'
+    }).state('options', {
+      url: '/options',
+      cache: false,
+      templateUrl: 'templates/pages/options.html',
+      controller: 'OptionsController'
+    }).state('accounts', {
+      url: '/accounts',
+      cache: false,
+      templateUrl: 'templates/pages/accounts.html',
+      controller: 'AccountsController'
+    }).state('redirect', {
+      url: '/redirect',
+      cache: false,
+      templateUrl: 'templates/pages/oauth-redirect.template.html',
+      controller: 'OAuthRedirect'
+    });
+    $urlRouterProvider.otherwise('/home');
+  }
+]);
+/**
+ * @name translation.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$translateProvider',
+  function ($translateProvider) {
+    var language = localStorage['language'] || 'en';
+    $translateProvider.preferredLanguage(language);
+    $translateProvider.useStaticFilesLoader({
+      prefix: 'i18n/',
+      suffix: '.json'
+    });
   }
 ]);
 /**
@@ -3488,323 +3488,24 @@ angular.module('binary').directive('appUpdate', [
   }
 ]);
 /**
- * @name contractSummary
- * @author Massih Hazrati
- * @contributors []
- * @since 11/07/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('contractSummary', [
-  'websocketService',
-  function (websocketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/trades/contract-summary.template.html',
-      link: function (scope, element) {
-        scope.basis = scope.$parent.proposalToSend.basis || 'payout';
-        scope.backToOptionPage = function () {
-          $('.contract-purchase button').attr('disabled', false);
-          scope.setTradeMode(true);
-        };
-      }
-    };
-  }
-]);
-/**
- * @name longCode
- * @author Massih Hazrati
- * @contributors []
- * @since 11/07/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('longCode', [
-  'websocketService',
-  function (websocketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/trades/longcode.template.html',
-      link: function (scope, element) {
-        scope.$parent.$watch('proposalRecieved', function (_proposal) {
-          scope.longcode = _proposal ? _proposal.longcode : '';
-        });
-      }
-    };
-  }
-]);
-/**
- * @name payout
- * @author Massih Hazrati
- * @contributors []
- * @since 11/07/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('payout', [
-  'websocketService',
-  'marketService',
-  'proposalService',
-  'delayService',
-  'appStateService',
-  function (websocketService, marketService, proposalService, delayService, appStateService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/trades/payout.template.html',
-      link: function (scope, element) {
-        var minimumUpdateDelay = 1000;
-        scope.basis = scope.$parent.proposalToSend.basis || 'payout';
-        scope.amount = marketService.getDefault.amount();
-        if (scope.amount == 0) {
-          scope.amount = 5;
-          updateProposal();
-        }
-        scope.proposalError = null;
-        proposalService.send();
-        scope.$on('$destroy', function () {
-          delayService.remove('updateProposal');
-        });
-        scope.$parent.$watch('proposalRecieved', function (_proposal) {
-          if (_proposal) {
-            var netProfit = parseFloat(_proposal.payout) - parseFloat(_proposal.ask_price);
-            _proposal.netProfit = isNaN(netProfit) || netProfit < 0 ? '0' : netProfit.toFixed(2);
-            scope.proposal = _proposal;
-            scope.proposalError = null;
-            if (scope.$parent && scope.$parent.purchaseFrom) {
-              scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', true);
-            }
-            if (!scope.$$phase) {
-              scope.$apply();
-            }
-          }
-        });
-        scope.$on('purchase:error', function (e, error) {
-          if (scope.$parent.purchaseFrom) {
-            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        });
-        scope.$on('proposal:error', function (e, error) {
-          scope.proposalError = error;
-          if (scope.$parent.purchaseFrom) {
-            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        });
-        function roundNumber(_newAmount, _oldAmount) {
-          var parsed = parseFloat(_newAmount, 10);
-          if (parsed !== parsed) {
-            return _oldAmount;
-          }
-          return Math.round(parsed * 100) / 100;
-        }
-        ;
-        function updateProposal() {
-          var proposal = proposalService.get();
-          if (proposal) {
-            proposal.amount = parseFloat(scope.amount, 10);
-            proposalService.update(proposal);
-            proposalService.send(scope.proposal && scope.proposal.id ? scope.proposal.id : null);
-          }
-        }
-        ;
-        scope.delayedUpdateProposal = function delayedUpdateProposal() {
-          appStateService.waitForProposal = true;
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-          delayService.update('updateProposal', updateProposal, minimumUpdateDelay);
-        };
-        scope.updateAmount = function (_form) {
-          scope.delayedUpdateProposal();
-        };
-        // TODO: limit to the account balance for stake
-        // TODO: figure out how to handle it for payout
-        scope.addAmount = function () {
-          var amount = parseFloat(scope.amount);
-          if (isNaN(amount)) {
-            amount = 0;
-          }
-          scope.amount = amount < 100000 ? Number(amount + 1).toFixed(2) : 100000;
-        };
-        scope.subtractAmount = function () {
-          var amount = parseFloat(scope.amount);
-          scope.amount = amount > 2 ? Number(amount - 1).toFixed(2) : 1;
-        };
-        scope.isObjectEmpty = function (_obj) {
-          return _.isEmpty(_obj);
-        };
-      }
-    };
-  }
-]);
-/**
- * @name purchase
- * @author Massih Hazrati
- * @contributors []
- * @since 11/07/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('purchase', [
-  'websocketService',
-  'alertService',
-  '$rootScope',
-  'appStateService',
-  function (websocketService, alertService, $rootScope, appStateService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/trades/purchase.template.html',
-      link: function (scope, element, attrs) {
-        scope.attrs = attrs;
-        scope.title = attrs.title ? attrs.title : 'trade.buy';
-        scope.purchase = function () {
-          $('.contract-purchase button').attr('disabled', true);
-          appStateService.purchaseMode = true;
-          websocketService.sendRequestFor.purchase(scope.$parent.proposalRecieved.id, scope.$parent.proposalRecieved.ask_price);
-        };
-        scope.getNgDisabled = function () {
-          if (scope.attrs['ngDisabled']) {
-            return scope.$eval(scope.attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name tradeContractChart
- * @author Massih Hazrati
- * @contributors []
- * @since 11/07/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('tradeContractChart', [
-  'websocketService',
-  'chartService',
-  function (websocketService, chartService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/trades/trade-contract-chart.template.html',
-      link: function (scope, element) {
-        var sendRequestForTicksHistory = function sendRequestForTicksHistory() {
-          var symbol = scope.$parent.proposalToSend.symbol;
-          websocketService.sendRequestFor.forgetTicks();
-          websocketService.sendRequestFor.ticksHistory({
-            'ticks_history': symbol,
-            'end': 'latest',
-            'count': chartService.getCapacity(),
-            'subscribe': 1
-          });
-        };
-        var init = function () {
-          var chartID = 'tradeContractChart';
-          chartService.drawChart(chartID);
-          scope.$parent.chartDragLeft = chartService.dragLeft;
-          scope.$parent.chartDragRight = chartService.dragRight;
-          scope.$parent.chartTouch = chartService.dragStart;
-          scope.$parent.chartRelease = chartService.dragEnd;
-          scope.$parent.chartPinchIn = chartService.zoomOut;
-          scope.$parent.chartPinchOut = chartService.zoomIn;
-          scope.$parent.chartPinchStart = chartService.zoomStart;
-          scope.$parent.chartPinchEnd = chartService.zoomEnd;
-          sendRequestForTicksHistory();
-        };
-        init();
-        scope.$on('$destroy', function (e, value) {
-          chartService.destroy();
-        });
-        scope.$on('portfolio', function (e, portfolio) {
-          var contractId = scope.$parent.contract.contract_id;
-          if (typeof contractId !== 'undefined') {
-            portfolio.contracts.forEach(function (contract) {
-              if (contract.contract_id == contractId) {
-                chartService.addContract({
-                  startTime: contract.date_start + 1,
-                  duration: parseInt(scope.$parent.proposalToSend.duration),
-                  type: contract.contract_type,
-                  barrier: scope.$parent.proposalToSend.barrier
-                });
-              }
-            });
-          }
-        });
-        scope.$on('tick', function (e, feed) {
-          if (feed && feed.echo_req.ticks_history === scope.$parent.proposalToSend.symbol) {
-            chartService.historyInterface.addTick(feed.tick);
-          } else {
-            websocketService.sendRequestFor.forgetStream(feed.tick.id);
-          }
-        });
-        scope.$on('history', function (e, feed) {
-          if (feed && feed.echo_req.ticks_history === scope.$parent.proposalToSend.symbol) {
-            chartService.historyInterface.addHistory(feed.history);
-          }
-        });
-        scope.$on('candles', function (e, feed) {
-          if (feed) {
-            chartService.historyInterface.addCandles(feed.candles);
-          }
-        });
-        scope.$on('ohlc', function (e, feed) {
-          if (feed) {
-            chartService.historyInterface.addOhlc(feed.ohlc);
-          }
-        });
-        scope.$on('connection:ready', function (e) {
-          sendRequestForTicksHistory();
-        });
-      }
-    };
-  }
-]);
-/**
- * @name tradeType
+ * @name languageList Directive
  * @author Morteza Tavanarad
  * @contributors []
- * @since 02/12/2016
+ * @since 04/10/2016
  * @copyright Binary Ltd
  */
-angular.module('binary').directive('tradeType', [
-  'config',
-  'proposalService',
-  function (config, proposalService) {
+angular.module('binary').directive('languageList', [
+  'languageService',
+  function (languageService) {
     return {
       restrict: 'E',
-      templateUrl: 'templates/components/trades/trade-type.template.html',
-      scope: { proposal: '=' },
-      link: function (scope, element) {
-        function init() {
-          scope.tradeCategory = _.find(config.tradeTypes, [
-            'value',
-            scope.proposal.contract_type
-          ]).category;
-          scope.tradeTypes = _.filter(config.tradeTypes, [
-            'category',
-            scope.tradeCategory
-          ]);
-        }
-        function updateProposal(_tradeType) {
-          scope.proposal = proposalService.get();
-          if (scope.proposal) {
-            scope.proposal.contract_type = _tradeType;
-            proposalService.update(scope.proposal);
-            proposalService.send(scope.proposal && scope.proposal.id ? scope.proposal.id : null);
-          }
-        }
-        scope.changeTradeType = function () {
-          updateProposal(scope.proposal.contract_type);
+      scope: {},
+      templateUrl: 'templates/components/language/language-list.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.language = languageService.read();
+        scope.changeLanguage = function () {
+          languageService.update(scope.language);
         };
-        scope.checkDigitsConditions = function (_tradeType) {
-          if (_tradeType === 'DIGITOVER' && scope.proposal.barrier == 9) {
-            return true;
-          } else if (_tradeType === 'DIGITUNDER' && scope.proposal.barrier == 0) {
-            return true;
-          }
-          return false;
-        };
-        init();
       }
     };
   }
@@ -4161,24 +3862,323 @@ angular.module('binary').directive('tradeCategory', [
   }
 ]);
 /**
- * @name languageList Directive
- * @author Morteza Tavanarad
+ * @name contractSummary
+ * @author Massih Hazrati
  * @contributors []
- * @since 04/10/2016
+ * @since 11/07/2015
  * @copyright Binary Ltd
  */
-angular.module('binary').directive('languageList', [
-  'languageService',
-  function (languageService) {
+angular.module('binary').directive('contractSummary', [
+  'websocketService',
+  function (websocketService) {
     return {
       restrict: 'E',
-      scope: {},
-      templateUrl: 'templates/components/language/language-list.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.language = languageService.read();
-        scope.changeLanguage = function () {
-          languageService.update(scope.language);
+      templateUrl: 'templates/components/trades/contract-summary.template.html',
+      link: function (scope, element) {
+        scope.basis = scope.$parent.proposalToSend.basis || 'payout';
+        scope.backToOptionPage = function () {
+          $('.contract-purchase button').attr('disabled', false);
+          scope.setTradeMode(true);
         };
+      }
+    };
+  }
+]);
+/**
+ * @name longCode
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/07/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('longCode', [
+  'websocketService',
+  function (websocketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/trades/longcode.template.html',
+      link: function (scope, element) {
+        scope.$parent.$watch('proposalRecieved', function (_proposal) {
+          scope.longcode = _proposal ? _proposal.longcode : '';
+        });
+      }
+    };
+  }
+]);
+/**
+ * @name payout
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/07/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('payout', [
+  'websocketService',
+  'marketService',
+  'proposalService',
+  'delayService',
+  'appStateService',
+  function (websocketService, marketService, proposalService, delayService, appStateService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/trades/payout.template.html',
+      link: function (scope, element) {
+        var minimumUpdateDelay = 1000;
+        scope.basis = scope.$parent.proposalToSend.basis || 'payout';
+        scope.amount = marketService.getDefault.amount();
+        if (scope.amount == 0) {
+          scope.amount = 5;
+          updateProposal();
+        }
+        scope.proposalError = null;
+        proposalService.send();
+        scope.$on('$destroy', function () {
+          delayService.remove('updateProposal');
+        });
+        scope.$parent.$watch('proposalRecieved', function (_proposal) {
+          if (_proposal) {
+            var netProfit = parseFloat(_proposal.payout) - parseFloat(_proposal.ask_price);
+            _proposal.netProfit = isNaN(netProfit) || netProfit < 0 ? '0' : netProfit.toFixed(2);
+            scope.proposal = _proposal;
+            scope.proposalError = null;
+            if (scope.$parent && scope.$parent.purchaseFrom) {
+              scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', true);
+            }
+            if (!scope.$$phase) {
+              scope.$apply();
+            }
+          }
+        });
+        scope.$on('purchase:error', function (e, error) {
+          if (scope.$parent.purchaseFrom) {
+            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
+          }
+          if (!scope.$$phase) {
+            scope.$apply();
+          }
+        });
+        scope.$on('proposal:error', function (e, error) {
+          scope.proposalError = error;
+          if (scope.$parent.purchaseFrom) {
+            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
+          }
+          if (!scope.$$phase) {
+            scope.$apply();
+          }
+        });
+        function roundNumber(_newAmount, _oldAmount) {
+          var parsed = parseFloat(_newAmount, 10);
+          if (parsed !== parsed) {
+            return _oldAmount;
+          }
+          return Math.round(parsed * 100) / 100;
+        }
+        ;
+        function updateProposal() {
+          var proposal = proposalService.get();
+          if (proposal) {
+            proposal.amount = parseFloat(scope.amount, 10);
+            proposalService.update(proposal);
+            proposalService.send(scope.proposal && scope.proposal.id ? scope.proposal.id : null);
+          }
+        }
+        ;
+        scope.delayedUpdateProposal = function delayedUpdateProposal() {
+          appStateService.waitForProposal = true;
+          if (!scope.$$phase) {
+            scope.$apply();
+          }
+          delayService.update('updateProposal', updateProposal, minimumUpdateDelay);
+        };
+        scope.updateAmount = function (_form) {
+          scope.delayedUpdateProposal();
+        };
+        // TODO: limit to the account balance for stake
+        // TODO: figure out how to handle it for payout
+        scope.addAmount = function () {
+          var amount = parseFloat(scope.amount);
+          if (isNaN(amount)) {
+            amount = 0;
+          }
+          scope.amount = amount < 100000 ? Number(amount + 1).toFixed(2) : 100000;
+        };
+        scope.subtractAmount = function () {
+          var amount = parseFloat(scope.amount);
+          scope.amount = amount > 2 ? Number(amount - 1).toFixed(2) : 1;
+        };
+        scope.isObjectEmpty = function (_obj) {
+          return _.isEmpty(_obj);
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name purchase
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/07/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('purchase', [
+  'websocketService',
+  'alertService',
+  '$rootScope',
+  'appStateService',
+  function (websocketService, alertService, $rootScope, appStateService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/trades/purchase.template.html',
+      link: function (scope, element, attrs) {
+        scope.attrs = attrs;
+        scope.title = attrs.title ? attrs.title : 'trade.buy';
+        scope.purchase = function () {
+          $('.contract-purchase button').attr('disabled', true);
+          appStateService.purchaseMode = true;
+          websocketService.sendRequestFor.purchase(scope.$parent.proposalRecieved.id, scope.$parent.proposalRecieved.ask_price);
+        };
+        scope.getNgDisabled = function () {
+          if (scope.attrs['ngDisabled']) {
+            return scope.$eval(scope.attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name tradeContractChart
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/07/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('tradeContractChart', [
+  'websocketService',
+  'chartService',
+  function (websocketService, chartService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/trades/trade-contract-chart.template.html',
+      link: function (scope, element) {
+        var sendRequestForTicksHistory = function sendRequestForTicksHistory() {
+          var symbol = scope.$parent.proposalToSend.symbol;
+          websocketService.sendRequestFor.forgetTicks();
+          websocketService.sendRequestFor.ticksHistory({
+            'ticks_history': symbol,
+            'end': 'latest',
+            'count': chartService.getCapacity(),
+            'subscribe': 1
+          });
+        };
+        var init = function () {
+          var chartID = 'tradeContractChart';
+          chartService.drawChart(chartID);
+          scope.$parent.chartDragLeft = chartService.dragLeft;
+          scope.$parent.chartDragRight = chartService.dragRight;
+          scope.$parent.chartTouch = chartService.dragStart;
+          scope.$parent.chartRelease = chartService.dragEnd;
+          scope.$parent.chartPinchIn = chartService.zoomOut;
+          scope.$parent.chartPinchOut = chartService.zoomIn;
+          scope.$parent.chartPinchStart = chartService.zoomStart;
+          scope.$parent.chartPinchEnd = chartService.zoomEnd;
+          sendRequestForTicksHistory();
+        };
+        init();
+        scope.$on('$destroy', function (e, value) {
+          chartService.destroy();
+        });
+        scope.$on('portfolio', function (e, portfolio) {
+          var contractId = scope.$parent.contract.contract_id;
+          if (typeof contractId !== 'undefined') {
+            portfolio.contracts.forEach(function (contract) {
+              if (contract.contract_id == contractId) {
+                chartService.addContract({
+                  startTime: contract.date_start + 1,
+                  duration: parseInt(scope.$parent.proposalToSend.duration),
+                  type: contract.contract_type,
+                  barrier: scope.$parent.proposalToSend.barrier
+                });
+              }
+            });
+          }
+        });
+        scope.$on('tick', function (e, feed) {
+          if (feed && feed.echo_req.ticks_history === scope.$parent.proposalToSend.symbol) {
+            chartService.historyInterface.addTick(feed.tick);
+          } else {
+            websocketService.sendRequestFor.forgetStream(feed.tick.id);
+          }
+        });
+        scope.$on('history', function (e, feed) {
+          if (feed && feed.echo_req.ticks_history === scope.$parent.proposalToSend.symbol) {
+            chartService.historyInterface.addHistory(feed.history);
+          }
+        });
+        scope.$on('candles', function (e, feed) {
+          if (feed) {
+            chartService.historyInterface.addCandles(feed.candles);
+          }
+        });
+        scope.$on('ohlc', function (e, feed) {
+          if (feed) {
+            chartService.historyInterface.addOhlc(feed.ohlc);
+          }
+        });
+        scope.$on('connection:ready', function (e) {
+          sendRequestForTicksHistory();
+        });
+      }
+    };
+  }
+]);
+/**
+ * @name tradeType
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/12/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('tradeType', [
+  'config',
+  'proposalService',
+  function (config, proposalService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/trades/trade-type.template.html',
+      scope: { proposal: '=' },
+      link: function (scope, element) {
+        function init() {
+          scope.tradeCategory = _.find(config.tradeTypes, [
+            'value',
+            scope.proposal.contract_type
+          ]).category;
+          scope.tradeTypes = _.filter(config.tradeTypes, [
+            'category',
+            scope.tradeCategory
+          ]);
+        }
+        function updateProposal(_tradeType) {
+          scope.proposal = proposalService.get();
+          if (scope.proposal) {
+            scope.proposal.contract_type = _tradeType;
+            proposalService.update(scope.proposal);
+            proposalService.send(scope.proposal && scope.proposal.id ? scope.proposal.id : null);
+          }
+        }
+        scope.changeTradeType = function () {
+          updateProposal(scope.proposal.contract_type);
+        };
+        scope.checkDigitsConditions = function (_tradeType) {
+          if (_tradeType === 'DIGITOVER' && scope.proposal.barrier == 9) {
+            return true;
+          } else if (_tradeType === 'DIGITUNDER' && scope.proposal.barrier == 0) {
+            return true;
+          }
+          return false;
+        };
+        init();
       }
     };
   }
