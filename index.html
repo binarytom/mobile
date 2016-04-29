@@ -59,7 +59,18 @@
     </script>
     <!-- END AMPLITUDE -->
 
-	<!-- ionic/angularjs js -->
+    <!-- Modify redirect url -->
+    <script>
+        var url = window.location.hash;
+
+        if(/#\/redirect\%23/.exec(url)){
+            url = url.replace("%23", "?");
+            window.location.href = url;
+        }
+    </script>
+    <!-- END Modify -->
+	
+    <!-- ionic/angularjs js -->
 	<script src="lib/ionic/js/ionic.bundle.js"></script>
 	<!-- cordova script (this will be a 404 during development) -->
 	<script src="cordova.js"></script>
