@@ -470,19 +470,20 @@ angular.module('binary').controller('TradeController', [
         // Send statistic to Google Analytics
         if (typeof analytics !== 'undefined') {
           analytics.trackEvent($scope.account.loginid, proposal.symbol, proposal.contract_type, $scope.proposalRecieved.payout);
-        } else {
-          var ampEventProperties = {
-              Symbol: proposal.symbol,
-              TradeType: proposal.contract_type,
-              Stake: proposal.basis === 'payout' ? $scope.proposalRecieved.ask_price : proposal.ammount,
-              Market: proposal.passthrough.market,
-              Duration: proposal.duration,
-              DurationUnit: proposal.duration_unit,
-              result: _contract.result === 'lose' ? 'Lost' : 'Won'
-            };
-          // Send statistic to Amplitude
-          amplitude.logEvent('Purchase', ampEventProperties);
         }
+        //else{
+        var ampEventProperties = {
+            Symbol: proposal.symbol,
+            TradeType: proposal.contract_type,
+            Stake: proposal.basis === 'payout' ? $scope.proposalRecieved.ask_price : proposal.ammount,
+            Market: proposal.passthrough.market,
+            Duration: proposal.duration,
+            DurationUnit: proposal.duration_unit,
+            result: _contract.result === 'lose' ? 'Lost' : 'Won'
+          };
+        // Send statistic to Amplitude
+        amplitude.logEvent('Purchase', ampEventProperties);
+        //}
         proposalService.send();
         if (!$scope.$$phase) {
           $scope.$apply();
@@ -556,6 +557,25 @@ angular.module('binary').controller('TradeController', [
         'READ',
         'TRADE'
       ]);
+    };
+  }
+]);
+/**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
     };
   }
 ]);
@@ -800,25 +820,6 @@ angular.module('binary').config([
       prefix: 'i18n/',
       suffix: '.json'
     });
-  }
-]);
-/**
- * @name contractSummary
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/28/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
-    };
   }
 ]);
 /**
@@ -3176,7 +3177,8 @@ angular.module('binary').directive('oauth', [
   'alertService',
   'accountService',
   'languageService',
-  function (config, websocketService, alertService, accountService, languageService) {
+  '$ionicLoading',
+  function (config, websocketService, alertService, accountService, languageService, $ionicLoading) {
     return {
       restrict: 'E',
       scope: {},
@@ -3185,9 +3187,8 @@ angular.module('binary').directive('oauth', [
         var accounts = [];
         var authenticate = function (_token) {
           // Validate the token
-          scope.showSpinner = false;
           if (_token && _token.length == 32) {
-            scope.showSpinner = true;
+            $ionicLoading.show();
             websocketService.authenticate(_token);
           } else {
             alertService.accountError.tokenNotValid();
@@ -3312,7 +3313,8 @@ angular.module('binary').directive('signin', [
   '$state',
   '$ionicPopup',
   '$compile',
-  function (accountService, languageService, websocketService, alertService, $state, $ionicPopup, $compile) {
+  '$ionicLoading',
+  function (accountService, languageService, websocketService, alertService, $state, $ionicPopup, $compile, $ionicLoading) {
     return {
       restrict: 'E',
       templateUrl: 'templates/components/accounts/signin.template.html',
@@ -3330,7 +3332,7 @@ angular.module('binary').directive('signin', [
         };
         init();
         scope.$on('authorize', function (e, response) {
-          scope.showSpinner = false;
+          $ionicLoading.hide();
           if (response) {
             if (accountService.isUnique(response.loginid)) {
               accountService.add(response);
@@ -3352,9 +3354,8 @@ angular.module('binary').directive('signin', [
           // Set the user's language
           //languageService.update(scope.language);
           // Validate the token
-          scope.showSpinner = false;
           if (_token && _token.length === 15) {
-            scope.showSpinner = true;
+            $ionicLoading.show();
             websocketService.authenticate(_token);
           } else {
             alertService.accountError.tokenNotValid();
@@ -3383,128 +3384,6 @@ angular.module('binary').directive('signin', [
           if (!scope.$$phase) {
             scope.$apply();
           }
-        };
-      }
-    };
-  }
-]);
-/**
- * @name appUpdate
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/07/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('appUpdate', [
-  '$ionicPlatform',
-  function ($ionicPlatform) {
-    return {
-      scope: {},
-      restrict: 'E',
-      templateUrl: 'templates/components/codepush/app-update.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
-        };
-        // Use codepush to check new update and install it.
-        $ionicPlatform.ready(function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = true;
-          scope.progress = 0;
-          if (window.codePush) {
-            codePush.sync(function (syncStatus) {
-              scope.isShown = false;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                scope.isShown = true;
-                scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                scope.isShown = true;
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                scope.isShown = true;
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                setTimeout(scope.hide, 5000);
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            }, {
-              installMode: InstallMode.IMMEDIATE,
-              updateDialog: true
-            }, function (downloadProgress) {
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            });
-          }
-        });
-      }
-    };
-  }
-]);
-/**
- * @name languageList Directive
- * @author Morteza Tavanarad
- * @contributors []
- * @since 04/10/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('languageList', [
-  'languageService',
-  function (languageService) {
-    return {
-      restrict: 'E',
-      scope: {},
-      templateUrl: 'templates/components/language/language-list.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.language = languageService.read();
-        scope.changeLanguage = function () {
-          languageService.update(scope.language);
         };
       }
     };
@@ -3857,6 +3736,128 @@ angular.module('binary').directive('tradeCategory', [
         }, function () {
           $ionicScrollDelegate.resize();
         }, false);
+      }
+    };
+  }
+]);
+/**
+ * @name appUpdate
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/07/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('appUpdate', [
+  '$ionicPlatform',
+  function ($ionicPlatform) {
+    return {
+      scope: {},
+      restrict: 'E',
+      templateUrl: 'templates/components/codepush/app-update.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.hide = function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = false;
+          if (!scope.$$phase && !scope.$root.$$phase) {
+            scope.$apply();
+          }
+        };
+        // Use codepush to check new update and install it.
+        $ionicPlatform.ready(function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = true;
+          scope.progress = 0;
+          if (window.codePush) {
+            codePush.sync(function (syncStatus) {
+              scope.isShown = false;
+              scope.showSpinner = false;
+              scope.isDownloading = false;
+              switch (syncStatus) {
+              // Result (final) statuses
+              case SyncStatus.UPDATE_INSTALLED:
+                scope.isShown = true;
+                scope.isDownloading = false;
+                scope.message = 'update.installed';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UP_TO_DATE:
+                //console.log("The application is up to date.");
+                scope.message = 'update.up_to_date';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UPDATE_IGNORED:
+                //alertService.displayAlert("Update","The user decided not to install the optional update.");
+                break;
+              case SyncStatus.ERROR:
+                //alertService.displayAlert("Update","An error occured while checking for updates");
+                scope.isDownloading = false;
+                scope.message = 'update.error';
+                setTimeout(scope.hide, 5000);
+                break;
+              // Intermediate (non final) statuses
+              case SyncStatus.CHECKING_FOR_UPDATE:
+                //console.log("Checking for update.");
+                scope.message = 'update.check_for_update';
+                scope.showSpinner = true;
+                break;
+              case SyncStatus.AWAITING_USER_ACTION:
+                //console.log("Alerting user.");
+                break;
+              case SyncStatus.DOWNLOADING_PACKAGE:
+                scope.isShown = true;
+                //console.log("Downloading package.");
+                scope.isDownloading = true;
+                scope.message = 'update.downloading';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.INSTALLING_UPDATE:
+                scope.isShown = true;
+                //console.log("Installing update");
+                scope.message = 'installing';
+                scope.showSpinner = true;
+                setTimeout(scope.hide, 5000);
+                break;
+              }
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            }, {
+              installMode: InstallMode.IMMEDIATE,
+              updateDialog: true
+            }, function (downloadProgress) {
+              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
+              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            });
+          }
+        });
+      }
+    };
+  }
+]);
+/**
+ * @name languageList Directive
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 04/10/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('languageList', [
+  'languageService',
+  function (languageService) {
+    return {
+      restrict: 'E',
+      scope: {},
+      templateUrl: 'templates/components/language/language-list.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.language = languageService.read();
+        scope.changeLanguage = function () {
+          languageService.update(scope.language);
+        };
       }
     };
   }

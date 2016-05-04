@@ -28,8 +28,8 @@ $dark:                            #444 !default;
 */
 @font-face {
   font-family: "Ionicons";
-  src: url("../lib/ionic/fonts/ionicons.eot?v=2.0.1");
-  src: url("../lib/ionic/fonts/ionicons.eot?v=2.0.1#iefix") format("embedded-opentype"), url("../lib/ionic/fonts/ionicons.ttf?v=2.0.1") format("truetype"), url("../lib/ionic/fonts/ionicons.woff?v=2.0.1") format("woff"), url("../lib/ionic/fonts/ionicons.woff") format("woff"), url("../lib/ionic/fonts/ionicons.svg?v=2.0.1#Ionicons") format("svg");
+  src: url("../lib/ionic/release/fonts/ionicons.eot?v=2.0.1");
+  src: url("../lib/ionic/release/fonts/ionicons.eot?v=2.0.1#iefix") format("embedded-opentype"), url("../lib/ionic/release/fonts/ionicons.ttf?v=2.0.1") format("truetype"), url("../lib/ionic/release/fonts/ionicons.woff?v=2.0.1") format("woff"), url("../lib/ionic/release/fonts/ionicons.woff") format("woff"), url("../lib/ionic/release/fonts/ionicons.svg?v=2.0.1#Ionicons") format("svg");
   font-weight: normal;
   font-style: normal; }
 
@@ -9191,21 +9191,6 @@ input::-webkit-inner-spin-button {
 .bar .button.button-clear.icon-right:before {
   font-size: 24px; }
 
-.spinner {
-  position: absolute;
-  top: -60px;
-  left: 0;
-  right: 0; }
-  .spinner svg {
-    margin: 0 auto;
-    display: block;
-    width: 50px;
-    height: 50px;
-    stroke: #fff; }
-
-.spinner svg {
-  fill: red; }
-
 .update .spinner {
   top: 0px !important;
   left: 0;
@@ -10209,7 +10194,11 @@ input::-webkit-inner-spin-button {
 
 @media only screen and (max-device-width: 480px) {
   /*RU Language*/
-  .trade .buy-again button {
+  body#ru .trade .buy-again button {
     font-size: 12px; }
-  .trade .buy-again .price-des {
-    font-size: 3vw; } }
+  body#ru .trade .buy-again .price-des {
+    font-size: 3vw; }
+  body#pt .trade .buy-again button {
+    font-size: 12px;
+    line-height: 12px;
+    min-height: 32px; } }
