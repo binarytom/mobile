@@ -66,25 +66,6 @@ angular.module('binary').run([
   }
 ]);
 /**
- * @name contractSummary
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/28/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
-    };
-  }
-]);
-/**
  * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
  *
  * This patch works around iOS9 UIWebView regression that causes infinite digest
@@ -166,7 +147,7 @@ angular.module('binary').constant('config', {
   'oauthUrl': 'https://www.binary.com/oauth2/authorize',
   'tradeCategories': [
     {
-      name: 'Up/Down',
+      name: 'up_down',
       markets: [
         'forex',
         'volidx',
@@ -175,7 +156,7 @@ angular.module('binary').constant('config', {
       value: 'UP/DOWN'
     },
     {
-      name: 'Digit Matches/Differs',
+      name: 'digit_matches_differs',
       value: 'MATCH/DIFF',
       markets: [
         'volidx',
@@ -184,7 +165,7 @@ angular.module('binary').constant('config', {
       digits: true
     },
     {
-      name: 'Digit Even/Odd',
+      name: 'digit_even_odd',
       markets: [
         'volidx',
         'random'
@@ -192,7 +173,7 @@ angular.module('binary').constant('config', {
       value: 'EVEN/ODD'
     },
     {
-      name: 'Digit Over/Under',
+      name: 'digit_over_under',
       value: 'OVER/UNDER',
       markets: [
         'volidx',
@@ -201,7 +182,7 @@ angular.module('binary').constant('config', {
       digits: true
     },
     {
-      name: 'Asians',
+      name: 'asians',
       value: 'Asians',
       markets: [
         'volidx',
@@ -839,6 +820,25 @@ angular.module('binary').controller('TradeController', [
         'READ',
         'TRADE'
       ]);
+    };
+  }
+]);
+/**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
     };
   }
 ]);
@@ -2583,6 +2583,7 @@ angular.module('binary').service('marketService', [
             var assetContracts = assetIndex[i][indexes.contracts];
             for (var c = 0; c < assetContracts.length; c++) {
               if (assetContracts[c][indexes.contractFrom].indexOf('t') !== -1) {
+                market.display_name = assetIndex[i][indexes.displayName];
                 result.push(market);
                 break;
               }
