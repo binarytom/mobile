@@ -66,269 +66,6 @@ angular.module('binary').run([
   }
 ]);
 /**
- * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
- *
- * This patch works around iOS9 UIWebView regression that causes infinite digest
- * errors in Angular.
- *
- * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
- * have the workaround baked in.
- *
- * To apply this patch load/bundle this file with your application and add a
- * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
- *
- * For example:
- *
- * ```
- * angular.module('myApp', ['ngRoute'])`
- * ```
- *
- * becomes
- *
- * ```
- * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
- * ```
- *
- *
- * More info:
- * - https://openradar.appspot.com/22186109
- * - https://github.com/angular/angular.js/issues/12241
- * - https://github.com/driftyco/ionic/issues/4082
- *
- *
- * @license AngularJS
- * (c) 2010-2015 Google, Inc. http://angularjs.org
- * License: MIT
- */
-angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
-  '$provide',
-  function ($provide) {
-    'use strict';
-    $provide.decorator('$browser', [
-      '$delegate',
-      '$window',
-      function ($delegate, $window) {
-        if (isIOS9UIWebView($window.navigator.userAgent)) {
-          return applyIOS9Shim($delegate);
-        }
-        return $delegate;
-        function isIOS9UIWebView(userAgent) {
-          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
-        }
-        function applyIOS9Shim(browser) {
-          var pendingLocationUrl = null;
-          var originalUrlFn = browser.url;
-          browser.url = function () {
-            if (arguments.length) {
-              pendingLocationUrl = arguments[0];
-              return originalUrlFn.apply(browser, arguments);
-            }
-            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
-          };
-          window.addEventListener('popstate', clearPendingLocationUrl, false);
-          window.addEventListener('hashchange', clearPendingLocationUrl, false);
-          function clearPendingLocationUrl() {
-            pendingLocationUrl = null;
-          }
-          return browser;
-        }
-      }
-    ]);
-  }
-]);
-/**
- * @contributors []
- * @since 10/25/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').constant('config', {
-  'app_id': 'id-ct9oK1jjUNyxvPKYNdqJxuGX7bHvJ',
-  'wsUrl': 'wss://ws.binaryws.com/websockets/v3?l=',
-  'oauthUrl': 'https://www.binary.com/oauth2/authorize',
-  'tradeCategories': [
-    {
-      name: 'up_down',
-      markets: [
-        'forex',
-        'volidx',
-        'random'
-      ],
-      value: 'UP/DOWN'
-    },
-    {
-      name: 'digit_matches_differs',
-      value: 'MATCH/DIFF',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    },
-    {
-      name: 'digit_even_odd',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      value: 'EVEN/ODD'
-    },
-    {
-      name: 'digit_over_under',
-      value: 'OVER/UNDER',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    },
-    {
-      name: 'asians',
-      value: 'Asians',
-      markets: [
-        'volidx',
-        'random'
-      ]
-    }
-  ],
-  'tradeTypes': [
-    {
-      name: 'Up',
-      value: 'CALL',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Down',
-      value: 'PUT',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Asians Up',
-      value: 'ASIANU',
-      digits: false,
-      category: 'Asians'
-    },
-    {
-      name: 'Asians Down',
-      value: 'ASIAND',
-      digits: false,
-      category: 'Asians'
-    },
-    {
-      name: 'Digit Match',
-      value: 'DIGITMATCH',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Differs',
-      value: 'DIGITDIFF',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Even',
-      value: 'DIGITEVEN',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Odd',
-      value: 'DIGITODD',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over',
-      value: 'DIGITOVER',
-      digits: true,
-      category: 'OVER/UNDER'
-    },
-    {
-      name: 'Digit Under',
-      value: 'DIGITUNDER',
-      digits: true,
-      category: 'OVER/UNDER'
-    }
-  ],
-  'language': 'en',
-  'assetIndexes': {
-    symbol: 0,
-    displayName: 1,
-    contracts: 2,
-    contractName: 0,
-    contractDisplayName: 1,
-    contractFrom: 2,
-    contractTo: 3
-  }
-});
-/**
- * @name states.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$stateProvider',
-  '$urlRouterProvider',
-  function ($stateProvider, $urlRouterProvider) {
-    $stateProvider.state('home', {
-      url: '/home',
-      cache: false,
-      templateUrl: 'templates/pages/home.html',
-      controller: 'HomeController'
-    }).state('signin', {
-      url: '/sign-in',
-      cache: false,
-      templateUrl: 'templates/pages/sign-in.html',
-      controller: 'SignInController'
-    }).state('help', {
-      url: '/help',
-      templateUrl: 'templates/pages/help.html',
-      controller: 'HelpController'
-    }).state('trade', {
-      url: '/trade',
-      cache: false,
-      templateUrl: 'templates/pages/trade.html',
-      controller: 'TradeController'
-    }).state('options', {
-      url: '/options',
-      cache: false,
-      templateUrl: 'templates/pages/options.html',
-      controller: 'OptionsController'
-    }).state('accounts', {
-      url: '/accounts',
-      cache: false,
-      templateUrl: 'templates/pages/accounts.html',
-      controller: 'AccountsController'
-    }).state('redirect', {
-      url: '/redirect',
-      cache: false,
-      templateUrl: 'templates/pages/oauth-redirect.template.html',
-      controller: 'OAuthRedirect'
-    });
-    $urlRouterProvider.otherwise('/home');
-  }
-]);
-/**
- * @name translation.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$translateProvider',
-  function ($translateProvider) {
-    var language = localStorage['language'] || 'en';
-    $translateProvider.preferredLanguage(language);
-    $translateProvider.useStaticFilesLoader({
-      prefix: 'i18n/',
-      suffix: '.json'
-    });
-  }
-]);
-/**
  * @name AccountController
  * @author Massih Hazrati
  * @contributors []
@@ -824,22 +561,266 @@ angular.module('binary').controller('TradeController', [
   }
 ]);
 /**
- * @name contractSummary
- * @author Morteza Tavanarad
+ * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
+ *
+ * This patch works around iOS9 UIWebView regression that causes infinite digest
+ * errors in Angular.
+ *
+ * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
+ * have the workaround baked in.
+ *
+ * To apply this patch load/bundle this file with your application and add a
+ * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
+ *
+ * For example:
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute'])`
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
+ * ```
+ *
+ *
+ * More info:
+ * - https://openradar.appspot.com/22186109
+ * - https://github.com/angular/angular.js/issues/12241
+ * - https://github.com/driftyco/ionic/issues/4082
+ *
+ *
+ * @license AngularJS
+ * (c) 2010-2015 Google, Inc. http://angularjs.org
+ * License: MIT
+ */
+angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
+  '$provide',
+  function ($provide) {
+    'use strict';
+    $provide.decorator('$browser', [
+      '$delegate',
+      '$window',
+      function ($delegate, $window) {
+        if (isIOS9UIWebView($window.navigator.userAgent)) {
+          return applyIOS9Shim($delegate);
+        }
+        return $delegate;
+        function isIOS9UIWebView(userAgent) {
+          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
+        }
+        function applyIOS9Shim(browser) {
+          var pendingLocationUrl = null;
+          var originalUrlFn = browser.url;
+          browser.url = function () {
+            if (arguments.length) {
+              pendingLocationUrl = arguments[0];
+              return originalUrlFn.apply(browser, arguments);
+            }
+            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
+          };
+          window.addEventListener('popstate', clearPendingLocationUrl, false);
+          window.addEventListener('hashchange', clearPendingLocationUrl, false);
+          function clearPendingLocationUrl() {
+            pendingLocationUrl = null;
+          }
+          return browser;
+        }
+      }
+    ]);
+  }
+]);
+/**
  * @contributors []
- * @since 12/28/2015
+ * @since 10/25/2015
  * @copyright Binary Ltd
  */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
-    };
+angular.module('binary').constant('config', {
+  'app_id': 'id-ct9oK1jjUNyxvPKYNdqJxuGX7bHvJ',
+  'wsUrl': 'wss://ws.binaryws.com/websockets/v3?l=',
+  'oauthUrl': 'https://www.binary.com/oauth2/authorize',
+  'tradeCategories': [
+    {
+      name: 'up_down',
+      markets: [
+        'forex',
+        'volidx',
+        'random'
+      ],
+      value: 'UP/DOWN'
+    },
+    {
+      name: 'digit_matches_differs',
+      value: 'MATCH/DIFF',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    },
+    {
+      name: 'digit_even_odd',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      value: 'EVEN/ODD'
+    },
+    {
+      name: 'digit_over_under',
+      value: 'OVER/UNDER',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    },
+    {
+      name: 'asians',
+      value: 'Asians',
+      markets: [
+        'volidx',
+        'random'
+      ]
+    }
+  ],
+  'tradeTypes': [
+    {
+      name: 'Up',
+      value: 'CALL',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Down',
+      value: 'PUT',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Asians Up',
+      value: 'ASIANU',
+      digits: false,
+      category: 'Asians'
+    },
+    {
+      name: 'Asians Down',
+      value: 'ASIAND',
+      digits: false,
+      category: 'Asians'
+    },
+    {
+      name: 'Digit Match',
+      value: 'DIGITMATCH',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Differs',
+      value: 'DIGITDIFF',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Even',
+      value: 'DIGITEVEN',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Odd',
+      value: 'DIGITODD',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over',
+      value: 'DIGITOVER',
+      digits: true,
+      category: 'OVER/UNDER'
+    },
+    {
+      name: 'Digit Under',
+      value: 'DIGITUNDER',
+      digits: true,
+      category: 'OVER/UNDER'
+    }
+  ],
+  'language': 'en',
+  'assetIndexes': {
+    symbol: 0,
+    displayName: 1,
+    contracts: 2,
+    contractName: 0,
+    contractDisplayName: 1,
+    contractFrom: 2,
+    contractTo: 3
+  }
+});
+/**
+ * @name states.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$stateProvider',
+  '$urlRouterProvider',
+  function ($stateProvider, $urlRouterProvider) {
+    $stateProvider.state('home', {
+      url: '/home',
+      cache: false,
+      templateUrl: 'templates/pages/home.html',
+      controller: 'HomeController'
+    }).state('signin', {
+      url: '/sign-in',
+      cache: false,
+      templateUrl: 'templates/pages/sign-in.html',
+      controller: 'SignInController'
+    }).state('help', {
+      url: '/help',
+      templateUrl: 'templates/pages/help.html',
+      controller: 'HelpController'
+    }).state('trade', {
+      url: '/trade',
+      cache: false,
+      templateUrl: 'templates/pages/trade.html',
+      controller: 'TradeController'
+    }).state('options', {
+      url: '/options',
+      cache: false,
+      templateUrl: 'templates/pages/options.html',
+      controller: 'OptionsController'
+    }).state('accounts', {
+      url: '/accounts',
+      cache: false,
+      templateUrl: 'templates/pages/accounts.html',
+      controller: 'AccountsController'
+    }).state('redirect', {
+      url: '/redirect',
+      cache: false,
+      templateUrl: 'templates/pages/oauth-redirect.template.html',
+      controller: 'OAuthRedirect'
+    });
+    $urlRouterProvider.otherwise('/home');
+  }
+]);
+/**
+ * @name translation.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$translateProvider',
+  function ($translateProvider) {
+    var language = localStorage['language'] || 'en';
+    $translateProvider.preferredLanguage(language);
+    $translateProvider.useStaticFilesLoader({
+      prefix: 'i18n/',
+      suffix: '.json'
+    });
   }
 ]);
 /**
@@ -1299,6 +1280,12 @@ angular.module('binary').factory('chartService', [
         lastDigit: function lastDigit(num) {
           return parseInt(num.toString().slice(-1)[0]);
         },
+        average: function average(list) {
+          var decimalPointLength = utils.fractionalLength(list[0]) + 1;
+          return parseFloat(list.reduce(function (a, b) {
+            return a + b;
+          }, 0) / list.length).toFixed(decimalPointLength);
+        },
         conditions: {
           CALL: function condition(barrier, price) {
             return parseFloat(price) > parseFloat(barrier);
@@ -1325,15 +1312,11 @@ angular.module('binary').factory('chartService', [
             return utils.lastDigit(price) > parseInt(barrier);
           },
           ASIANU: function condition(barrier, price, priceList) {
-            var avg = priceList.reduce(function (a, b) {
-                return a + b;
-              }, 0) / priceList.length;
+            var avg = utils.average(priceList);
             return parseFloat(price) > avg;
           },
           ASIAND: function condition(barrier, price, priceList) {
-            var avg = priceList.reduce(function (a, b) {
-                return a + b;
-              }, 0) / priceList.length;
+            var avg = utils.average(priceList);
             return parseFloat(price) < avg;
           }
         },
@@ -1547,7 +1530,17 @@ angular.module('binary').factory('chartService', [
               color: '#818183',
               label: 'barrier: ' + contract.barrier,
               orientation: 'horizontal',
+              type: 'barrier',
               index: index
+            });
+          } else if (utils.asianGame(contract) && tickPriceList.length > 0 && !hasExitSpot()) {
+            chartDrawer.addGridLine({
+              color: '#818183',
+              label: 'Average: ' + utils.average(tickPriceList),
+              orientation: 'horizontal',
+              type: 'average',
+              firstIndex: index,
+              index: index + (tickPriceList.length - 1)
             });
           }
         } else if (isExitSpot(tickTime, utils.getAbsoluteIndex(index))) {
@@ -1563,7 +1556,7 @@ angular.module('binary').factory('chartService', [
             utils.setObjValue(contract, 'exitSpot', tickTime, !hasExitSpot());
           }
           utils.setObjValue(contract, 'entrySpotIndex', index, isEntrySpot(tickTime));
-          utils.setObjValue(contract, 'exitSpotIndex', index, isExitSpot(tickTime, index));
+          utils.setObjValue(contract, 'exitSpotIndex', index, isExitSpot(tickTime, index));  //tickPriceList.push(tickPrice);
         }
       };
       var viewRegions = function viewRegions() {
@@ -1820,14 +1813,19 @@ angular.module('binary').factory('chartService', [
           ctx.textAlign = 'center';
           ctx.fillText(gridLine.label, point.x, scale.startPoint + 12);
         } else if (gridLine.orientation === 'horizontal') {
-          ctx.moveTo(scale.startPoint, point.y);
+          var yPoint = point.y;
+          if (gridLine.type === 'average' && gridLine.index !== gridLine.firstIndex) {
+            firstPoint = thisChart.datasets[0].points[gridLine.firstIndex];
+            yPoint = (firstPoint.y + point.y) / 2;
+          }
+          ctx.moveTo(scale.startPoint, yPoint);
           ctx.strokeStyle = gridLine.color;
           ctx.fillStyle = gridLine.color;
-          ctx.lineTo(thisChart.chart.width, point.y);
+          ctx.lineTo(thisChart.chart.width, yPoint);
           ctx.stroke();
           ctx.textAlign = 'center';
           var labelWidth = ctx.measureText(gridLine.label).width;
-          ctx.fillText(gridLine.label, parseInt(labelWidth / 2) + 5, point.y - 1);
+          ctx.fillText(gridLine.label, parseInt(labelWidth / 2) + 5, yPoint - 1);
         }
       };
       /* Override ChartJS Defaults */
@@ -3073,6 +3071,124 @@ angular.module('binary').factory('websocketService', [
   }
 ]);
 /**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
+    };
+  }
+]);
+/**
+ * @name appUpdate
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/07/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('appUpdate', [
+  '$ionicPlatform',
+  function ($ionicPlatform) {
+    return {
+      scope: {},
+      restrict: 'E',
+      templateUrl: 'templates/components/codepush/app-update.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.hide = function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = false;
+          if (!scope.$$phase && !scope.$root.$$phase) {
+            scope.$apply();
+          }
+        };
+        // Use codepush to check new update and install it.
+        $ionicPlatform.ready(function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = true;
+          scope.progress = 0;
+          if (window.codePush) {
+            codePush.sync(function (syncStatus) {
+              scope.isShown = false;
+              scope.showSpinner = false;
+              scope.isDownloading = false;
+              switch (syncStatus) {
+              // Result (final) statuses
+              case SyncStatus.UPDATE_INSTALLED:
+                scope.isShown = true;
+                scope.isDownloading = false;
+                scope.message = 'update.installed';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UP_TO_DATE:
+                //console.log("The application is up to date.");
+                scope.message = 'update.up_to_date';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UPDATE_IGNORED:
+                //alertService.displayAlert("Update","The user decided not to install the optional update.");
+                break;
+              case SyncStatus.ERROR:
+                //alertService.displayAlert("Update","An error occured while checking for updates");
+                scope.isDownloading = false;
+                scope.message = 'update.error';
+                setTimeout(scope.hide, 5000);
+                break;
+              // Intermediate (non final) statuses
+              case SyncStatus.CHECKING_FOR_UPDATE:
+                //console.log("Checking for update.");
+                scope.message = 'update.check_for_update';
+                scope.showSpinner = true;
+                break;
+              case SyncStatus.AWAITING_USER_ACTION:
+                //console.log("Alerting user.");
+                break;
+              case SyncStatus.DOWNLOADING_PACKAGE:
+                scope.isShown = true;
+                //console.log("Downloading package.");
+                scope.isDownloading = true;
+                scope.message = 'update.downloading';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.INSTALLING_UPDATE:
+                scope.isShown = true;
+                //console.log("Installing update");
+                scope.message = 'installing';
+                scope.showSpinner = true;
+                setTimeout(scope.hide, 5000);
+                break;
+              }
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            }, {
+              installMode: InstallMode.IMMEDIATE,
+              updateDialog: true
+            }, function (downloadProgress) {
+              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
+              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            });
+          }
+        });
+      }
+    };
+  }
+]);
+/**
  * @name changeAccount
  * @author Massih Hazrati
  * @contributors []
@@ -3441,105 +3557,6 @@ angular.module('binary').directive('signin', [
   }
 ]);
 /**
- * @name appUpdate
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/07/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('appUpdate', [
-  '$ionicPlatform',
-  function ($ionicPlatform) {
-    return {
-      scope: {},
-      restrict: 'E',
-      templateUrl: 'templates/components/codepush/app-update.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
-        };
-        // Use codepush to check new update and install it.
-        $ionicPlatform.ready(function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = true;
-          scope.progress = 0;
-          if (window.codePush) {
-            codePush.sync(function (syncStatus) {
-              scope.isShown = false;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                scope.isShown = true;
-                scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                scope.isShown = true;
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                scope.isShown = true;
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                setTimeout(scope.hide, 5000);
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            }, {
-              installMode: InstallMode.IMMEDIATE,
-              updateDialog: true
-            }, function (downloadProgress) {
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            });
-          }
-        });
-      }
-    };
-  }
-]);
-/**
  * @name languageList Directive
  * @author Morteza Tavanarad
  * @contributors []
@@ -3558,357 +3575,6 @@ angular.module('binary').directive('languageList', [
         scope.changeLanguage = function () {
           languageService.update(scope.language);
         };
-      }
-    };
-  }
-]);
-/**
- * @name digitsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('digitsOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/digits.template.html',
-      link: function (scope, element, attrs) {
-        scope.attrs = attrs;
-        var hideDigit = function hideDigit(hideDigit) {
-          var digitIndex = scope.digits.indexOf(hideDigit);
-          if (digitIndex < 0) {
-            return;
-          }
-          scope.digits.splice(digitIndex, 1);
-          if (scope.$parent.selected.digit == hideDigit) {
-            scope.$parent.selected.digit = scope.digits[0];
-          }
-        };
-        scope.digits = [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9
-        ];
-        scope.$parent.selected.digit = marketService.getDefault.digit();
-        scope.$parent.$watch('hideDigit', function (value) {
-          if (scope.$parent != null) {
-            scope.digits = [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              8,
-              9
-            ];
-            scope.$parent.selected.digit = marketService.getDefault.digit();
-            if (!isNaN(value)) {
-              hideDigit(parseInt(value));
-            }
-          }
-        });
-        scope.updateDigit = function (_digit) {
-          scope.$parent.selected.digit = _digit;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name marketsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('marketsOption', [
-  'marketService',
-  'proposalService',
-  'alertService',
-  function (marketService, proposalService, alertService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/markets.template.html',
-      link: function (scope, element, attrs) {
-        scope.showSymbolWarning = true;
-        /**
-				 * Get all symbols for the selected market
-				 * @param  {String} _market Selected Market
-				 */
-        var updateSymbols = function (_market) {
-          scope.symbols = marketService.getAllSymbolsForAMarket(_market);
-          //marketService.getActiveTickSymbolsForMarket(_market);
-          if (scope.symbols.length > 0) {
-            scope.$parent.selected.symbol = marketService.getDefault.symbol(_market, scope.symbols);
-            marketService.getSymbolDetails(scope.$parent.selected.symbol);
-          } else {
-            // If there is not any symbol that has tick support, a empty array broadcast for symbol
-            scope.$broadcast('symbol', []);
-            if (scope.showSymbolWarning) {
-              scope.showSymbolWarning = false;
-              alertService.displaySymbolWarning('alert.no_underlying');
-              scope.$watch(function () {
-                return scope.$parent.selected.market;
-              }, function (newVal, oldVal) {
-                if (newVal !== oldVal)
-                  scope.showSymbolWarning = true;
-              });
-            }
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        };
-        /**
-				 * init function - to run on the page load
-				 * Get forex and random markets
-				 * Set the default/selected market
-				 */
-        var init = function () {
-          if (marketService.hasActiveSymobols() && marketService.hasAssetIndex()) {
-            try {
-              marketService.fixOrder();
-              var markets = marketService.getActiveMarkets();
-              scope.market = { forex: markets.indexOf('forex') !== -1 ? true : false };
-              //FIXME Should be change after changing Random to Volitality-Indices permenantly
-              if (markets.indexOf('volidx') >= 0) {
-                scope.market.volidx = true;
-              } else if (markets.indexOf('random') >= 0) {
-                scope.market.random = true;
-              }
-              scope.$parent.selected.market = marketService.getDefault.market(scope.market);
-              updateSymbols(scope.$parent.selected.market);
-              if (!scope.$$phase) {
-                scope.$apply();
-              }
-            } catch (error) {
-              console.log(error);
-            }
-          }
-        };
-        init();
-        scope.$on('symbols:updated', function (e, _symbol) {
-          init();
-        });
-        scope.$on('assetIndex:updated', function (e, _symbol) {
-          //updateSymbols(scope.$parent.selected.market);
-          init();
-        });
-        scope.updateMarket = function (_market) {
-          // To disable "Let's trade" button until all data is loaded
-          scope.setDataLoaded(false);
-          scope.$parent.selected.market = _market;
-          updateSymbols(scope.$parent.selected.market);
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-        scope.isRandom = function () {
-          var markets = marketService.getActiveMarkets();
-          return markets.indexOf('random') > -1;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name payoutStakeOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('payoutStakeOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/payout-stake.template.html',
-      link: function (scope, element, attrs) {
-        scope.$parent.selected.basis = marketService.getDefault.basis();
-        scope.updateBasis = function (_basis) {
-          scope.$parent.selected.basis = _basis;
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name symbolsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('symbolsOption', [
-  'marketService',
-  'alertService',
-  'config',
-  function (marketService, alertService, config) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/symbols.template.html',
-      link: function (scope, element, attrs) {
-        scope.tradeTypes = config.tradeTypes;
-        scope.$on('symbol', function (e, _symbol) {
-          if (!_.isEmpty(_symbol)) {
-            scope.tradeTypes = marketService.getTradeTypes(_symbol);
-            scope.$parent.selected.tradeType = marketService.getDefault.tradeType(scope.tradeTypes);
-            // Assigning "true" to isDataLoaded to enable "Let's trade" button
-            scope.setDataLoaded(true);
-          } else {
-            // Assigning "false" to isDataLoaded to disable "Let's trade" button
-            scope.setDataLoaded(true, false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        });
-        scope.updateSymbol = function (_selectedSymbol) {
-          scope.$parent.selected.symbol = _selectedSymbol;
-          marketService.getSymbolDetails(scope.$parent.selected.symbol);
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name ticksOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('ticksOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/ticks.template.html',
-      link: function (scope, element, attrs) {
-        scope.ticks = [
-          5,
-          6,
-          7,
-          8,
-          9,
-          10
-        ];
-        scope.$parent.selected.tick = marketService.getDefault.tick();
-        scope.updateTick = function (_tick) {
-          scope.$parent.selected.tick = _tick;
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name tradeCategory
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/12/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('tradeCategory', [
-  'marketService',
-  'config',
-  '$ionicScrollDelegate',
-  function (marketService, config, $ionicScrollDelegate) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/trade-category.template.html',
-      link: function (scope, element, attrs) {
-        scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-          return o.markets.indexOf(scope.$parent.selected.market) > -1;
-        });
-        scope.$parent.$watch('scope.tradeTypes', function (_newValue, _oldValue) {
-          var categories = Object.keys(_.groupBy(_newValue, 'category'));
-          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-            return categories.indexOf(o.value);
-          });
-        });
-        scope.$parent.$watch('selected', function (value) {
-          if (value.tradeType) {
-            var tradeTypeObj = _.find(config.tradeTypes, [
-                'value',
-                value.tradeType
-              ]);
-            scope.updateTradeType(tradeTypeObj.category);
-          }
-          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-            return o.markets.indexOf(scope.$parent.selected.market) > -1;
-          });
-        }, true);
-        scope.updateTradeType = function (_tradeCategory) {
-          var tradeType = _.find(config.tradeTypes, [
-              'category',
-              _tradeCategory
-            ]);
-          scope.$parent.selected.tradeType = tradeType.value;
-          scope.$parent.selected.tradeCategory = _tradeCategory;
-          scope.$parent.displayDigits = false;
-          scope.$parent.hideDigit = '';
-          if (tradeType.digits === true) {
-            if (_tradeCategory == 'OVER/UNDER') {
-              if (scope.$parent.selected.digit == 9) {
-                scope.$parent.selected.tradeType = 'DIGITUNDER';
-              } else {
-                scope.$parent.selected.tradeType = 'DIGITOVER';
-              }
-            }
-            scope.$parent.displayDigits = true;
-            // Set the digit and barrier for the first time that the digits are enabled
-            if (!scope.$parent.selected.barrier && !scope.$parent.selected.digit) {
-              scope.$parent.selected.digit = 0;
-            }
-          }
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-        scope.$parent.$watch(function () {
-          var digitsVisible = angular.element(document).find('digits-option').hasClass('ng-hide');
-          return digitsVisible;
-        }, function () {
-          $ionicScrollDelegate.resize();
-        }, false);
       }
     };
   }
@@ -4411,3 +4077,354 @@ angular.module('binary').directive('stringToNumber', function () {
     }
   };
 });
+/**
+ * @name digitsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('digitsOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/digits.template.html',
+      link: function (scope, element, attrs) {
+        scope.attrs = attrs;
+        var hideDigit = function hideDigit(hideDigit) {
+          var digitIndex = scope.digits.indexOf(hideDigit);
+          if (digitIndex < 0) {
+            return;
+          }
+          scope.digits.splice(digitIndex, 1);
+          if (scope.$parent.selected.digit == hideDigit) {
+            scope.$parent.selected.digit = scope.digits[0];
+          }
+        };
+        scope.digits = [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ];
+        scope.$parent.selected.digit = marketService.getDefault.digit();
+        scope.$parent.$watch('hideDigit', function (value) {
+          if (scope.$parent != null) {
+            scope.digits = [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ];
+            scope.$parent.selected.digit = marketService.getDefault.digit();
+            if (!isNaN(value)) {
+              hideDigit(parseInt(value));
+            }
+          }
+        });
+        scope.updateDigit = function (_digit) {
+          scope.$parent.selected.digit = _digit;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name marketsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('marketsOption', [
+  'marketService',
+  'proposalService',
+  'alertService',
+  function (marketService, proposalService, alertService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/markets.template.html',
+      link: function (scope, element, attrs) {
+        scope.showSymbolWarning = true;
+        /**
+				 * Get all symbols for the selected market
+				 * @param  {String} _market Selected Market
+				 */
+        var updateSymbols = function (_market) {
+          scope.symbols = marketService.getAllSymbolsForAMarket(_market);
+          //marketService.getActiveTickSymbolsForMarket(_market);
+          if (scope.symbols.length > 0) {
+            scope.$parent.selected.symbol = marketService.getDefault.symbol(_market, scope.symbols);
+            marketService.getSymbolDetails(scope.$parent.selected.symbol);
+          } else {
+            // If there is not any symbol that has tick support, a empty array broadcast for symbol
+            scope.$broadcast('symbol', []);
+            if (scope.showSymbolWarning) {
+              scope.showSymbolWarning = false;
+              alertService.displaySymbolWarning('alert.no_underlying');
+              scope.$watch(function () {
+                return scope.$parent.selected.market;
+              }, function (newVal, oldVal) {
+                if (newVal !== oldVal)
+                  scope.showSymbolWarning = true;
+              });
+            }
+          }
+          if (!scope.$$phase) {
+            scope.$apply();
+          }
+        };
+        /**
+				 * init function - to run on the page load
+				 * Get forex and random markets
+				 * Set the default/selected market
+				 */
+        var init = function () {
+          if (marketService.hasActiveSymobols() && marketService.hasAssetIndex()) {
+            try {
+              marketService.fixOrder();
+              var markets = marketService.getActiveMarkets();
+              scope.market = { forex: markets.indexOf('forex') !== -1 ? true : false };
+              //FIXME Should be change after changing Random to Volitality-Indices permenantly
+              if (markets.indexOf('volidx') >= 0) {
+                scope.market.volidx = true;
+              } else if (markets.indexOf('random') >= 0) {
+                scope.market.random = true;
+              }
+              scope.$parent.selected.market = marketService.getDefault.market(scope.market);
+              updateSymbols(scope.$parent.selected.market);
+              if (!scope.$$phase) {
+                scope.$apply();
+              }
+            } catch (error) {
+              console.log(error);
+            }
+          }
+        };
+        init();
+        scope.$on('symbols:updated', function (e, _symbol) {
+          init();
+        });
+        scope.$on('assetIndex:updated', function (e, _symbol) {
+          //updateSymbols(scope.$parent.selected.market);
+          init();
+        });
+        scope.updateMarket = function (_market) {
+          // To disable "Let's trade" button until all data is loaded
+          scope.setDataLoaded(false);
+          scope.$parent.selected.market = _market;
+          updateSymbols(scope.$parent.selected.market);
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+        scope.isRandom = function () {
+          var markets = marketService.getActiveMarkets();
+          return markets.indexOf('random') > -1;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name payoutStakeOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('payoutStakeOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/payout-stake.template.html',
+      link: function (scope, element, attrs) {
+        scope.$parent.selected.basis = marketService.getDefault.basis();
+        scope.updateBasis = function (_basis) {
+          scope.$parent.selected.basis = _basis;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name symbolsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('symbolsOption', [
+  'marketService',
+  'alertService',
+  'config',
+  function (marketService, alertService, config) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/symbols.template.html',
+      link: function (scope, element, attrs) {
+        scope.tradeTypes = config.tradeTypes;
+        scope.$on('symbol', function (e, _symbol) {
+          if (!_.isEmpty(_symbol)) {
+            scope.tradeTypes = marketService.getTradeTypes(_symbol);
+            scope.$parent.selected.tradeType = marketService.getDefault.tradeType(scope.tradeTypes);
+            // Assigning "true" to isDataLoaded to enable "Let's trade" button
+            scope.setDataLoaded(true);
+          } else {
+            // Assigning "false" to isDataLoaded to disable "Let's trade" button
+            scope.setDataLoaded(true, false);
+          }
+          if (!scope.$$phase) {
+            scope.$apply();
+          }
+        });
+        scope.updateSymbol = function (_selectedSymbol) {
+          scope.$parent.selected.symbol = _selectedSymbol;
+          marketService.getSymbolDetails(scope.$parent.selected.symbol);
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name ticksOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('ticksOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/ticks.template.html',
+      link: function (scope, element, attrs) {
+        scope.ticks = [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ];
+        scope.$parent.selected.tick = marketService.getDefault.tick();
+        scope.updateTick = function (_tick) {
+          scope.$parent.selected.tick = _tick;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name tradeCategory
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/12/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('tradeCategory', [
+  'marketService',
+  'config',
+  '$ionicScrollDelegate',
+  function (marketService, config, $ionicScrollDelegate) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/trade-category.template.html',
+      link: function (scope, element, attrs) {
+        scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+          return o.markets.indexOf(scope.$parent.selected.market) > -1;
+        });
+        scope.$parent.$watch('scope.tradeTypes', function (_newValue, _oldValue) {
+          var categories = Object.keys(_.groupBy(_newValue, 'category'));
+          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+            return categories.indexOf(o.value);
+          });
+        });
+        scope.$parent.$watch('selected', function (value) {
+          if (value.tradeType) {
+            var tradeTypeObj = _.find(config.tradeTypes, [
+                'value',
+                value.tradeType
+              ]);
+            scope.updateTradeType(tradeTypeObj.category);
+          }
+          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+            return o.markets.indexOf(scope.$parent.selected.market) > -1;
+          });
+        }, true);
+        scope.updateTradeType = function (_tradeCategory) {
+          var tradeType = _.find(config.tradeTypes, [
+              'category',
+              _tradeCategory
+            ]);
+          scope.$parent.selected.tradeType = tradeType.value;
+          scope.$parent.selected.tradeCategory = _tradeCategory;
+          scope.$parent.displayDigits = false;
+          scope.$parent.hideDigit = '';
+          if (tradeType.digits === true) {
+            if (_tradeCategory == 'OVER/UNDER') {
+              if (scope.$parent.selected.digit == 9) {
+                scope.$parent.selected.tradeType = 'DIGITUNDER';
+              } else {
+                scope.$parent.selected.tradeType = 'DIGITOVER';
+              }
+            }
+            scope.$parent.displayDigits = true;
+            // Set the digit and barrier for the first time that the digits are enabled
+            if (!scope.$parent.selected.barrier && !scope.$parent.selected.digit) {
+              scope.$parent.selected.digit = 0;
+            }
+          }
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+        scope.$parent.$watch(function () {
+          var digitsVisible = angular.element(document).find('digits-option').hasClass('ng-hide');
+          return digitsVisible;
+        }, function () {
+          $ionicScrollDelegate.resize();
+        }, false);
+      }
+    };
+  }
+]);
