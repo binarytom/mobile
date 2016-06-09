@@ -341,6 +341,25 @@ angular.module('binary').config([
   }
 ]);
 /**
+ * @name contractSummary
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/28/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').filter('customCurrency', [
+  '$filter',
+  function ($filter) {
+    return function (amount, currencySymbol) {
+      var currency = $filter('currency');
+      if (amount < 0) {
+        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
+      }
+      return currency(amount, currencySymbol);
+    };
+  }
+]);
+/**
  * @name AccountController
  * @author Massih Hazrati
  * @contributors []
@@ -833,25 +852,6 @@ angular.module('binary').controller('TradeController', [
         'READ',
         'TRADE'
       ]);
-    };
-  }
-]);
-/**
- * @name contractSummary
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/28/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').filter('customCurrency', [
-  '$filter',
-  function ($filter) {
-    return function (amount, currencySymbol) {
-      var currency = $filter('currency');
-      if (amount < 0) {
-        return currency(amount, currencySymbol).replace('(', '-').replace(')', '');
-      }
-      return currency(amount, currencySymbol);
     };
   }
 ]);
@@ -3471,107 +3471,6 @@ angular.module('binary').directive('signin', [
   }
 ]);
 /**
- * @name appUpdate
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/07/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('appUpdate', [
-  '$ionicPlatform',
-  function ($ionicPlatform) {
-    return {
-      scope: {},
-      restrict: 'E',
-      templateUrl: 'templates/components/codepush/app-update.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
-        };
-        // Use codepush to check new update and install it.
-        $ionicPlatform.ready(function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = true;
-          scope.progress = 0;
-          if (window.codePush) {
-            codePush.sync(function (syncStatus) {
-              scope.isShown = false;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                scope.isShown = true;
-                scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                scope.isShown = true;
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                //setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                scope.isShown = true;
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                setTimeout(scope.hide, 5000);
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            }, {
-              installMode: InstallMode.IMMEDIATE,
-              updateDialog: true
-            }, function (downloadProgress) {
-              scope.isShown = true;
-              scope.isDownloading = true;
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
-            });
-          }
-        });
-      }
-    };
-  }
-]);
-/**
  * @name languageList Directive
  * @author Morteza Tavanarad
  * @contributors []
@@ -3946,6 +3845,182 @@ angular.module('binary').directive('tradeCategory', [
   }
 ]);
 /**
+ * @name websocketService
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 01/14/2016
+ * @copyright Binary Ltd
+ * Directive to show application version
+ */
+angular.module('binary').directive('appVersion', [
+  '$ionicPlatform',
+  'appVersionService',
+  function ($ionicPlatform, appVersionService) {
+    return {
+      scope: { class: '@' },
+      restrict: 'E',
+      templateUrl: 'templates/components/utils/app-version.template.html',
+      link: function (scope) {
+        $ionicPlatform.ready(function () {
+          if (window.cordova) {
+            cordova.getAppVersion(function (version) {
+              scope.appVersion = version;
+            }, function (err) {
+              console.log(err);
+            });
+          } else {
+            appVersionService.getAppVersion().success(function (data) {
+              scope.appVersion = data.version;
+            }).error(function (data) {
+              scope.appVersion = '0.0.0';
+            });
+          }
+        });
+      }
+    };
+  }
+]);
+/**
+ * @name connectionError
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 01/04/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('connectionStatus', function () {
+  return {
+    scope: {},
+    restrict: 'E',
+    templateUrl: 'templates/components/utils/connection-status.template.html',
+    link: function (scope, element, attrs, ngModel) {
+      scope.isConnectionError = false;
+      scope.$on('connection:error', function () {
+        scope.isConnectionError = true;
+        if (!scope.$$phase) {
+          scope.$apply();
+        }
+      });
+      scope.$on('connection:ready', function () {
+        scope.isConnectionError = false;
+        if (!scope.$$phase) {
+          scope.$apply();
+        }
+      });
+    }
+  };
+});
+/**
+ * @name logoSpinner
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 01/18/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('logoSpinner', function () {
+  return {
+    restrict: 'E',
+    replace: true,
+    scope: { start: '=' },
+    templateUrl: 'templates/components/utils/logo-spinner.template.html'
+  };
+});
+/**
+ * @name onLongPress
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/09/2016
+ * @copyright Binary Ltd
+ * @example <button on-long-press="onLongPress()" on-touch-end="onTouchEnd()" repetitive="true" interval="300"> button </button
+ */
+angular.module('binary').directive('onLongPress', [
+  '$timeout',
+  '$interval',
+  function ($timeout, $interval) {
+    return {
+      restrict: 'A',
+      link: function (scope, elm, attrs) {
+        var timer = 0;
+        var interval = attrs.interval ? Number(attrs.interval) : 300;
+        var startPress = function (evt) {
+          // Locally scoped variable that will keep track of the long press
+          scope.longPress = true;
+          if (attrs.repetitive && attrs.repetitive === 'true') {
+            // run the function befor repeating in the interval
+            scope.$eval(attrs.onLongPress);
+            timer = $interval(function () {
+              if (scope.longPress) {
+                // If the touchend event hasn't fired,
+                // apply the function given in on the element's on-long-press attribute
+                scope.$eval(attrs.onLongPress);
+              }
+            }, interval);
+          } else {
+            // We'll set a timeout for 600 ms for a long press
+            timer = $timeout(function () {
+              if (scope.longPress) {
+                // If the touchend event hasn't fired,
+                // apply the function given in on the element's on-long-press attribute
+                scope.$eval(attrs.onLongPress);
+              }
+            }, interval);
+          }
+        };
+        var endPress = function (evt) {
+          // Prevent the onLongPress event from firing
+          scope.longPress = false;
+          if (attrs.repetitive && attrs.repetitive === 'true') {
+            $interval.cancel(timer);
+          } else {
+            $timeout.cancel(timer);
+          }
+          timer = undefined;
+          // If there is an on-touch-end function attached to this element, apply it
+          if (attrs.onTouchEnd) {
+            scope.$apply(function () {
+              scope.$eval(attrs.onTouchEnd);
+            });
+          }
+        };
+        elm.bind('touchstart', startPress);
+        elm.bind('touchend', endPress);
+        elm.bind('mousedown', startPress);
+        elm.bind('mouseup', endPress);
+      }
+    };
+  }
+]);
+/**
+ * @name stringToNumber
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 12/29/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('stringToNumber', function () {
+  return {
+    require: 'ngModel',
+    link: function (scope, element, attrs, ngModel) {
+      ngModel.$parsers.push(function (value) {
+        return '' + parseFloat(parseFloat(value).toFixed(2));
+      });
+      ngModel.$formatters.push(function (value) {
+        return parseFloat(value, 10);
+      });
+      scope.$watch(function () {
+        return ngModel.$viewValue;
+      }, function (_value) {
+        var value = _value.split('.');
+        if (value.length > 1) {
+          if (value[1].length > 2) {
+            ngModel.$viewValue = value[0] + '.' + value[1].slice(0, 2);
+            ngModel.$render();
+          }
+        }
+      });
+    }
+  };
+});
+/**
  * @name contractSummary
  * @author Massih Hazrati
  * @contributors []
@@ -4268,34 +4343,99 @@ angular.module('binary').directive('tradeType', [
   }
 ]);
 /**
- * @name websocketService
+ * @name appUpdate
  * @author Morteza Tavanarad
  * @contributors []
- * @since 01/14/2016
+ * @since 02/07/2016
  * @copyright Binary Ltd
- * Directive to show application version
  */
-angular.module('binary').directive('appVersion', [
+angular.module('binary').directive('appUpdate', [
   '$ionicPlatform',
-  'appVersionService',
-  function ($ionicPlatform, appVersionService) {
+  function ($ionicPlatform) {
     return {
-      scope: { class: '@' },
+      scope: {},
       restrict: 'E',
-      templateUrl: 'templates/components/utils/app-version.template.html',
-      link: function (scope) {
+      templateUrl: 'templates/components/codepush/app-update.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.hide = function () {
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = false;
+          if (!scope.$$phase && !scope.$root.$$phase) {
+            scope.$apply();
+          }
+        };
+        // Use codepush to check new update and install it.
         $ionicPlatform.ready(function () {
-          if (window.cordova) {
-            cordova.getAppVersion(function (version) {
-              scope.appVersion = version;
-            }, function (err) {
-              console.log(err);
-            });
-          } else {
-            appVersionService.getAppVersion().success(function (data) {
-              scope.appVersion = data.version;
-            }).error(function (data) {
-              scope.appVersion = '0.0.0';
+          scope.isShown = false;
+          scope.showSpinner = false;
+          scope.isDownloading = true;
+          scope.progress = 0;
+          if (window.codePush) {
+            codePush.sync(function (syncStatus) {
+              scope.isShown = false;
+              scope.showSpinner = false;
+              scope.isDownloading = false;
+              switch (syncStatus) {
+              // Result (final) statuses
+              case SyncStatus.UPDATE_INSTALLED:
+                scope.isShown = true;
+                scope.isDownloading = false;
+                scope.message = 'update.installed';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UP_TO_DATE:
+                //console.log("The application is up to date.");
+                scope.message = 'update.up_to_date';
+                setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.UPDATE_IGNORED:
+                //alertService.displayAlert("Update","The user decided not to install the optional update.");
+                break;
+              case SyncStatus.ERROR:
+                //alertService.displayAlert("Update","An error occured while checking for updates");
+                scope.isDownloading = false;
+                scope.message = 'update.error';
+                setTimeout(scope.hide, 5000);
+                break;
+              // Intermediate (non final) statuses
+              case SyncStatus.CHECKING_FOR_UPDATE:
+                //console.log("Checking for update.");
+                scope.message = 'update.check_for_update';
+                scope.showSpinner = true;
+                break;
+              case SyncStatus.AWAITING_USER_ACTION:
+                //console.log("Alerting user.");
+                break;
+              case SyncStatus.DOWNLOADING_PACKAGE:
+                scope.isShown = true;
+                //console.log("Downloading package.");
+                scope.isDownloading = true;
+                scope.message = 'update.downloading';
+                //setTimeout(scope.hide, 5000);
+                break;
+              case SyncStatus.INSTALLING_UPDATE:
+                scope.isShown = true;
+                //console.log("Installing update");
+                scope.message = 'installing';
+                scope.showSpinner = true;
+                setTimeout(scope.hide, 5000);
+                break;
+              }
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
+            }, {
+              installMode: InstallMode.IMMEDIATE,
+              updateDialog: true
+            }, function (downloadProgress) {
+              scope.isShown = true;
+              scope.isDownloading = true;
+              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
+              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              if (!scope.$$phase && !scope.$root.$$phase) {
+                scope.$apply();
+              }
             });
           }
         });
@@ -4303,143 +4443,3 @@ angular.module('binary').directive('appVersion', [
     };
   }
 ]);
-/**
- * @name connectionError
- * @author Morteza Tavanarad
- * @contributors []
- * @since 01/04/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('connectionStatus', function () {
-  return {
-    scope: {},
-    restrict: 'E',
-    templateUrl: 'templates/components/utils/connection-status.template.html',
-    link: function (scope, element, attrs, ngModel) {
-      scope.isConnectionError = false;
-      scope.$on('connection:error', function () {
-        scope.isConnectionError = true;
-        if (!scope.$$phase) {
-          scope.$apply();
-        }
-      });
-      scope.$on('connection:ready', function () {
-        scope.isConnectionError = false;
-        if (!scope.$$phase) {
-          scope.$apply();
-        }
-      });
-    }
-  };
-});
-/**
- * @name logoSpinner
- * @author Morteza Tavanarad
- * @contributors []
- * @since 01/18/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('logoSpinner', function () {
-  return {
-    restrict: 'E',
-    replace: true,
-    scope: { start: '=' },
-    templateUrl: 'templates/components/utils/logo-spinner.template.html'
-  };
-});
-/**
- * @name onLongPress
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/09/2016
- * @copyright Binary Ltd
- * @example <button on-long-press="onLongPress()" on-touch-end="onTouchEnd()" repetitive="true" interval="300"> button </button
- */
-angular.module('binary').directive('onLongPress', [
-  '$timeout',
-  '$interval',
-  function ($timeout, $interval) {
-    return {
-      restrict: 'A',
-      link: function (scope, elm, attrs) {
-        var timer = 0;
-        var interval = attrs.interval ? Number(attrs.interval) : 300;
-        var startPress = function (evt) {
-          // Locally scoped variable that will keep track of the long press
-          scope.longPress = true;
-          if (attrs.repetitive && attrs.repetitive === 'true') {
-            // run the function befor repeating in the interval
-            scope.$eval(attrs.onLongPress);
-            timer = $interval(function () {
-              if (scope.longPress) {
-                // If the touchend event hasn't fired,
-                // apply the function given in on the element's on-long-press attribute
-                scope.$eval(attrs.onLongPress);
-              }
-            }, interval);
-          } else {
-            // We'll set a timeout for 600 ms for a long press
-            timer = $timeout(function () {
-              if (scope.longPress) {
-                // If the touchend event hasn't fired,
-                // apply the function given in on the element's on-long-press attribute
-                scope.$eval(attrs.onLongPress);
-              }
-            }, interval);
-          }
-        };
-        var endPress = function (evt) {
-          // Prevent the onLongPress event from firing
-          scope.longPress = false;
-          if (attrs.repetitive && attrs.repetitive === 'true') {
-            $interval.cancel(timer);
-          } else {
-            $timeout.cancel(timer);
-          }
-          timer = undefined;
-          // If there is an on-touch-end function attached to this element, apply it
-          if (attrs.onTouchEnd) {
-            scope.$apply(function () {
-              scope.$eval(attrs.onTouchEnd);
-            });
-          }
-        };
-        elm.bind('touchstart', startPress);
-        elm.bind('touchend', endPress);
-        elm.bind('mousedown', startPress);
-        elm.bind('mouseup', endPress);
-      }
-    };
-  }
-]);
-/**
- * @name stringToNumber
- * @author Morteza Tavanarad
- * @contributors []
- * @since 12/29/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('stringToNumber', function () {
-  return {
-    require: 'ngModel',
-    link: function (scope, element, attrs, ngModel) {
-      ngModel.$parsers.push(function (value) {
-        return '' + parseFloat(parseFloat(value).toFixed(2));
-      });
-      ngModel.$formatters.push(function (value) {
-        return parseFloat(value, 10);
-      });
-      scope.$watch(function () {
-        return ngModel.$viewValue;
-      }, function (_value) {
-        var value = _value.split('.');
-        if (value.length > 1) {
-          if (value[1].length > 2) {
-            ngModel.$viewValue = value[0] + '.' + value[1].slice(0, 2);
-            ngModel.$render();
-          }
-        }
-      });
-    }
-  };
-});
