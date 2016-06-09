@@ -22,6 +22,16 @@ angular.module('binary').run([
   '$location',
   function ($rootScope, $ionicPlatform, $state, alertService, accountService, appStateService, $location) {
     $ionicPlatform.ready(function () {
+      // Add device information to Trackjs
+      var deviceInfo = ionic.Platform.device();
+      if (!jQuery.isEmptyObject(deviceInfo)) {
+        window.trackJs.addMetadata('Platform', deviceInfo.platform);
+        window.trackJs.addMetadata('Version', deviceInfo.version);
+        window.trackJs.addMetadata('Model', deviceInfo.model);
+        window.trackJs.addMetadata('Manufacturer', deviceInfo.manufacturer);
+        window.trackJs.addMetadata('IsVritual', deviceInfo.isVirtual);
+        window.trackJs.addMetadata('Cordova', deviceInfo.cordova);
+      }
       // Setup Google Analytics
       if (typeof analytics !== 'undefined') {
         analytics.startTrackerWithId('UA-40877026-7');
@@ -271,7 +281,9 @@ angular.module('binary').constant('config', {
 angular.module('binary').config([
   '$stateProvider',
   '$urlRouterProvider',
-  function ($stateProvider, $urlRouterProvider) {
+  '$ionicConfigProvider',
+  function ($stateProvider, $urlRouterProvider, $ionicConfigProvider) {
+    $ionicConfigProvider.views.swipeBackEnabled(false);
     $stateProvider.state('home', {
       url: '/home',
       cache: false,
@@ -411,7 +423,8 @@ angular.module('binary').controller('HelpController', [
   'languageService',
   function ($scope, $state, languageService) {
     var language = languageService.read();
-    $scope.tokenUrl = 'https://www.binary.com/user/api_tokenws?l=' + language.toUpperCase();
+    //            $scope.tokenUrl = "https://www.binary.com/user/api_tokenws?l=" + language.toUpperCase();
+    $scope.tokenUrl = 'https://www.binary.com/' + language.toLowerCase() + '/user/settings/api_tokenws.html';
     if (typeof analytics !== 'undefined') {
       analytics.trackView('Help');
     }
@@ -1235,9 +1248,9 @@ angular.module('binary').factory('chartService', [
             return !distribute(index);
           },
           datasets: [{
-              strokeColor: '#e98024',
-              pointColor: '#e98024',
-              pointStrokeColor: '#fff',
+              strokeColor: '#7cb5ec',
+              pointColor: '#7cb5ec',
+              pointStrokeColor: '#7cb5ec',
               data: []
             }]
         },
@@ -1546,7 +1559,7 @@ angular.module('binary').factory('chartService', [
           contract.showingEntrySpot = true;
           if (!utils.digitTrade(contract) && !utils.asianGame(contract) && !hasExitSpot()) {
             chartDrawer.addGridLine({
-              color: '#818183',
+              color: '#2E8836',
               label: 'barrier: ' + contract.barrier,
               orientation: 'horizontal',
               type: 'barrier',
@@ -1554,7 +1567,7 @@ angular.module('binary').factory('chartService', [
             });
           } else if (utils.asianGame(contract) && tickPriceList.length > 0 && !hasExitSpot()) {
             chartDrawer.addGridLine({
-              color: '#818183',
+              color: '#2E8836',
               label: 'Average: ' + utils.average(tickPriceList),
               orientation: 'horizontal',
               type: 'average',
@@ -1680,7 +1693,7 @@ angular.module('binary').factory('chartService', [
       var getLabelColor = function getLabelColor(index) {
         var color = 'black';
         if (!showingHistory() && isLastPoint(index)) {
-          color = 'green';
+          color = '#2E8836';
         }
         contractCtrls.forEach(function (contract) {
           if (contract.isSpot(index)) {
@@ -1693,16 +1706,16 @@ angular.module('binary').factory('chartService', [
         var color;
         contractCtrls.forEach(function (contract) {
           if (contract.betweenExistingSpots(value)) {
-            color = '#e98024';
+            color = '#7cb5ec';
           }
         });
         if (utils.isDefined(color)) {
           return color;
         }
         if (isLastPoint(index) && !showingHistory()) {
-          color = 'green';
+          color = '#2E8836';
         } else {
-          color = '#e98024';
+          color = '#7cb5ec';
         }
         return color;
       };
