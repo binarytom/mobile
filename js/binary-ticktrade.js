@@ -40,24 +40,31 @@ angular.module('binary').run([
       }
       // Handle the android's hardware button
       $ionicPlatform.registerBackButtonAction(function () {
-        if ($state.current.name === 'options') {
-          alertService.confirmExit(function (res) {
-            if (res == 1)
-              navigator.app.exitApp();
-          });
-        } else if ($state.current.name === 'signin' || $state.current.name === 'home') {
-          navigator.app.exitApp();
-        } else if ($state.current.name === 'trade' && appStateService.purchaseMode) {
+        if (appStateService.isPopupOpen) {
           return;
-        } else if ($state.current.name === 'trade' && !appStateService.purchaseMode && !appStateService.tradeMode) {
-          appStateService.tradeMode = true;
-          if (!$rootScope.$$phase) {
-            $rootScope.$apply();
-          }
         } else {
-          navigator.app.backHistory();
+          if ($state.current.name === 'options') {
+            alertService.confirmExit(function (res) {
+              if (res == 1) {
+                sessionStorage.removeItem('start');
+                sessionStorage.removeItem('_interval');
+                navigator.app.exitApp();
+              }
+            });
+          } else if ($state.current.name === 'signin' || $state.current.name === 'home') {
+            navigator.app.exitApp();
+          } else if ($state.current.name === 'trade' && appStateService.purchaseMode) {
+            return;
+          } else if ($state.current.name === 'trade' && !appStateService.purchaseMode && !appStateService.tradeMode) {
+            appStateService.tradeMode = true;
+            if (!$rootScope.$$phase) {
+              $rootScope.$apply();
+            }
+          } else {
+            navigator.app.backHistory();
+          }
         }
-      }, 100);
+      }, 500);
       var handleUnloggedinUser = function () {
         var isRedirect = /#\/redirect\?/.exec(window.location.hash);
         if (!accountService.getDefault() && !isRedirect) {
@@ -350,17 +357,14 @@ angular.module('binary').config([
  */
 angular.module('binary').controller('AccountsController', [
   '$scope',
-  '$rootScope',
   '$state',
-  '$window',
-  '$ionicPopup',
   'websocketService',
   'accountService',
   'alertService',
   'proposalService',
   'appStateService',
   'marketService',
-  function ($scope, $rootScope, $state, $window, $ionicPopup, websocketService, accountService, alertService, proposalService, appStateService, marketService) {
+  function ($scope, $state, websocketService, accountService, alertService, proposalService, appStateService, marketService) {
     if (typeof analytics !== 'undefined') {
       analytics.trackView('Account Management');
     }
@@ -380,11 +384,16 @@ angular.module('binary').controller('AccountsController', [
             res = false;
         }
         if (res) {
+          appStateService.isRealityChecked = false;
+          appStateService.isChangedAccount = false;
+          appStateService.isPopupOpen = false;
           accountService.removeAll();
           proposalService.remove();
           marketService.removeActiveSymbols();
           marketService.removeAssetIndex();
           appStateService.isLoggedin = false;
+          sessionStorage.removeItem('start');
+          sessionStorage.removeItem('_interval');
           websocketService.closeConnection();
           $scope.$parent.$broadcast('logout');
           $state.go('signin');
@@ -421,13 +430,11 @@ angular.module('binary').controller('HelpController', [
   '$scope',
   '$state',
   'languageService',
-  function ($scope, $state, languageService) {
+  'analyticsService',
+  function ($scope, $state, languageService, analyticsService) {
     var language = languageService.read();
-    //            $scope.tokenUrl = "https://www.binary.com/user/api_tokenws?l=" + language.toUpperCase();
     $scope.tokenUrl = 'https://www.binary.com/' + language.toLowerCase() + '/user/settings/api_tokenws.html';
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Help');
-    }
+    analyticsService.google.trackView('Help');
     $scope.backToSignInPage = function () {
       $state.go('signin');
     };
@@ -447,21 +454,25 @@ angular.module('binary').controller('HelpController', [
 angular.module('binary').controller('HomeController', [
   '$scope',
   '$state',
-  'websocketService',
   'accountService',
-  function ($scope, $state, websocketService, accountService) {
+  'analyticsService',
+  function ($scope, $state, accountService, analyticsService) {
     var init = function () {
-      if (typeof analytics !== 'undefined') {
-        analytics.trackView('Home');
-      }
-      //websocketService.init();
+      // send track view to Google Analytics
+      analyticsService.google.trackView('Home');
+      // Check that is saved any default account or not
       if (accountService.hasDefault()) {
+        // Login to the server if there is any default account
         accountService.validate();
       } else {
         $state.go('signin');
       }
     };
     init();
+    /**
+             * wait untile authorization and decide 
+             * to redirect user  to the proper page
+             */
     $scope.$on('authorize', function (e, response) {
       if (response) {
         $state.go('options');
@@ -481,9 +492,8 @@ angular.module('binary').controller('HomeController', [
  */
 angular.module('binary').controller('OAuthRedirect', [
   '$scope',
-  '$location',
   '$state',
-  function ($scope, $location, $state) {
+  function ($scope, $state) {
     var response = {};
     response.url = window.location.href;
     $scope.close = function () {
@@ -503,24 +513,20 @@ angular.module('binary').controller('OAuthRedirect', [
  */
 angular.module('binary').controller('OptionsController', [
   '$scope',
-  '$rootScope',
   '$state',
-  '$window',
   'config',
   'proposalService',
   'accountService',
   'websocketService',
-  'chartService',
   'delayService',
   'appStateService',
-  function ($scope, $rootScope, $state, $window, config, proposalService, accountService, websocketService, chartService, delayService, appStateService) {
+  'analyticsService',
+  function ($scope, $state, config, proposalService, accountService, websocketService, delayService, appStateService, analyticsService) {
     $scope.selected = {};
     $scope.isDataLoaded = false;
     $scope.letsTrade = false;
     $scope.hasTradePermission = getTradePermission();
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Options');
-    }
+    analyticsService.google.trackView('Options');
     websocketService.sendRequestFor.forgetAll('ticks');
     function updateSymbols() {
       if (!appStateService.isLoggedin) {
@@ -562,6 +568,11 @@ angular.module('binary').controller('OptionsController', [
       $state.go('accounts');
     };
     $scope.navigateToTradePage = function () {
+      var proposal = proposalService.get();
+      if (proposal.currency !== sessionStorage.currency) {
+        proposal.currency = sessionStorage.currency;
+        proposalService.update(proposal);
+      }
       $state.go('trade');
     };
     $scope.saveChanges = function () {
@@ -570,7 +581,7 @@ angular.module('binary').controller('OptionsController', [
           contract_type: $scope.selected.tradeType,
           duration: $scope.selected.tick,
           basis: $scope.selected.basis,
-          currency: accountService.getDefault().currency,
+          currency: _.isEmpty(accountService.getDefault().currency) ? sessionStorage.currency : accountService.getDefault().currency,
           passthrough: { market: $scope.selected.market },
           digit: $scope.selected.digit,
           barrier: $scope.selected.barrier
@@ -590,13 +601,12 @@ angular.module('binary').controller('OptionsController', [
       $scope.letsTrade = _.isNil(enableLetsTrade) ? stopSpinner : enableLetsTrade;
     };
     $scope.$on('authorize', function (e) {
-      $scope.hasTradePermission = getTradePermission();
-      delayService.update('symbolsAndAssetIndexUpdate', function () {
-        updateSymbols();
-      }, 60 * 1000);
-      if (!$scope.$$phase) {
-        $scope.$apply();
-      }
+      $scope.$applyAsync(function () {
+        $scope.hasTradePermission = getTradePermission();
+        delayService.update('symbolsAndAssetIndexUpdate', function () {
+          updateSymbols();
+        }, 60 * 1000);
+      });
     });
     function getTradePermission() {
       return accountService.checkScope([
@@ -604,6 +614,213 @@ angular.module('binary').controller('OptionsController', [
         'TRADE'
       ]);
     }
+  }
+]);
+angular.module('binary').controller('RealityCheckController', [
+  '$scope',
+  '$rootScope',
+  '$state',
+  '$timeout',
+  '$location',
+  'websocketService',
+  'appStateService',
+  'accountService',
+  '$ionicPopup',
+  'alertService',
+  '$translate',
+  'languageService',
+  'proposalService',
+  'marketService',
+  function ($scope, $rootScope, $state, $timeout, $location, websocketService, appStateService, accountService, $ionicPopup, alertService, $translate, languageService, proposalService, marketService) {
+    var landingCompanyName;
+    $scope.$on('authorize', function (e, authorize) {
+      $scope.sessionLoginId = authorize.loginid;
+      // check if user is not already authorized, account is real money account  & is not changed in app
+      if (!appStateService.isRealityChecked && authorize.is_virtual == 0 && !appStateService.isChangedAccount) {
+        landingCompanyName = authorize.landing_company_name;
+        websocketService.sendRequestFor.landingCompanyDetails(landingCompanyName);
+      }  // check if user is already authorized, account changed and is virtual money account
+      else if (appStateService.isRealityChecked && appStateService.isChangedAccount && authorize.is_virtual == 1) {
+        $timeout.cancel($scope.realityCheckTimeout);
+        appStateService.isChangedAccount = false;
+        appStateService.isRealityChecked = true;
+      }  // check if account is changed and is real money account
+      else if (appStateService.isChangedAccount && authorize.is_virtual == 0) {
+        if ($scope.realityCheckTimeout) {
+          $timeout.cancel($scope.realityCheckTimeout);
+        }
+        appStateService.isRealityChecked = false;
+        landingCompanyName = authorize.landing_company_name;
+        websocketService.sendRequestFor.landingCompanyDetails(landingCompanyName);
+        appStateService.isChangedAccount = false;
+      }
+    });
+    $scope.$on('landing_company_details', function (e, landingCompanyDetails) {
+      if (landingCompanyDetails.has_reality_check === 1) {
+        $scope.hasRealityCheck();
+      }
+    });
+    $scope.setInterval = function setInterval(val) {
+      var set = sessionStorage.setItem('_interval', val);
+    };
+    $scope.setStart = function setInterval(val) {
+      var set = sessionStorage.setItem('start', val);
+    };
+    $scope.getInterval = function (key) {
+      return sessionStorage.getItem(key);
+    };
+    $scope.getStart = function (key) {
+      return sessionStorage.getItem(key);
+    };
+    $scope.removeInterval = function (key) {
+      var remove = sessionStorage.removeItem(key);
+    };
+    $scope.removeStart = function (key) {
+      var remove = sessionStorage.removeItem(key);
+    };
+    $scope.hasRealityCheck = function () {
+      // if not asked the interval from user and the start time of reality check popups are not set in sessionStorage
+      if (!appStateService.isRealityChecked && _.isEmpty(sessionStorage._interval) == true) {
+        $scope.realityCheck();
+      }  // if not asked the interval from user and the start time of reality check popups are set in sessionStorage
+         // happens when user refresh the browser
+      else if (!appStateService.isRealityChecked && sessionStorage.start) {
+        appStateService.isRealityChecked = true;
+        // calculate the difference between time of last popup and current time
+        var timeGap = $scope.getStart('start');
+        var thisTime = new Date().getTime();
+        // if the difference above is smaller than the interval set the period for popup timeout to remained time
+        if ($scope.getInterval('_interval') * 60000 - (thisTime - timeGap) > 0) {
+          var period = $scope.getInterval('_interval') * 60000 - (thisTime - timeGap);
+          $scope.realityCheckTimeout = $timeout($scope.getRealityCheck, period);
+        }
+      }  // if user did not refresh the app and the interval is set
+      else {
+        if (_.isEmpty(sessionStorage._interval) == false) {
+          var period = $scope.getInterval('_interval') * 60000;
+          $scope.realityCheckTimeout = $timeout($scope.getRealityCheck, period);
+        }
+      }
+    };
+    $scope.realityCheck = function () {
+      appStateService.isRealityChecked = true;
+      $scope.data = {};
+      $scope.data.interval = 60;
+      appStateService.isPopupOpen = true;
+      $translate([
+        'realitycheck.continue',
+        'realitycheck.title'
+      ]).then(function (translation) {
+        alertService.displayRealitCheckInterval(translation['realitycheck.title'], 'realitycheck getinterval', $scope, 'templates/components/reality-check/interval-popup.template.html', [{
+            text: translation['realitycheck.continue'],
+            type: 'button-positive',
+            onTap: function (e) {
+              if ($scope.data.interval <= 120 && $scope.data.interval >= 10) {
+                $scope.setInterval($scope.data.interval);
+                $scope.data.start_interval = new Date().getTime();
+                $scope.setStart($scope.data.start_interval);
+                $scope.hasRealityCheck();
+                appStateService.isPopupOpen = false;
+              } else {
+                e.preventDefault();
+              }
+            }
+          }]);
+      });
+    };
+    $scope.getLastInterval = function () {
+      $scope.removeInterval('_interval');
+      $scope.setInterval($scope.data.interval);
+    };
+    $scope.$on('reality_check', function (e, reality_check) {
+      $scope.alertRealityCheck(reality_check);
+    });
+    $scope.getRealityCheck = function () {
+      websocketService.sendRequestFor.realityCheck();
+    };
+    $scope.sessionTime = function (reality_check) {
+      $scope.date = reality_check.start_time * 1000;
+      $scope.start_time = new Date($scope.date);
+      $scope.realityCheckitems.start_time = $scope.start_time.toUTCString();
+      $scope.now = Date.now();
+      $scope.realityCheckitems.currentTime = new Date($scope.now).toUTCString();
+      $scope.duration = $scope.now - $scope.date;
+      $scope.realityCheckitems.days = Math.floor($scope.duration / 86400000);
+      $scope.hour = $scope.duration - $scope.realityCheckitems.days * 86400000;
+      $scope.realityCheckitems.hours = Math.floor($scope.hour / 3600000);
+      $scope.min = $scope.duration - ($scope.realityCheckitems.days * 86400000 + $scope.realityCheckitems.hours * 3600000);
+      $scope.realityCheckitems.minutes = Math.floor($scope.min / 60000);
+    };
+    $scope.logout = function () {
+      alertService.confirmRemoveAllAccount(function (res) {
+        if (typeof res !== 'boolean') {
+          if (res == 1)
+            res = true;
+          else
+            res = false;
+        }
+        if (res) {
+          accountService.removeAll();
+          proposalService.remove();
+          marketService.removeActiveSymbols();
+          marketService.removeAssetIndex();
+          appStateService.isLoggedin = false;
+          websocketService.closeConnection();
+          $scope.$parent.$broadcast('logout');
+          $scope.removeInterval('_interval');
+          appStateService.isRealityChecked = false;
+          appStateService.isPopupOpen = false;
+          sessionStorage.removeItem('start');
+          $state.go('signin');
+        }
+        if (!res) {
+          $scope.hasRealityCheck();
+        }
+      });
+    };
+    $scope.alertRealityCheck = function (reality_check) {
+      $scope.removeStart('start');
+      $scope.realityCheckitems = reality_check;
+      if ($scope.sessionLoginId == $scope.realityCheckitems.loginid) {
+        $scope.sessionTime(reality_check);
+        $scope.data = {};
+        $scope.data.interval = parseInt($scope.getInterval('_interval'));
+        $timeout.cancel($scope.realityCheckTimeout);
+        appStateService.isPopupOpen = true;
+        $translate([
+          'realitycheck.title',
+          'realitycheck.continue',
+          'realitycheck.logout'
+        ]).then(function (translation) {
+          alertService.displayRealityCheckResult(translation['realitycheck.title'], 'realitycheck result-popup', $scope, 'templates/components/reality-check/reality-check-result.template.html', [
+            {
+              text: translation['realitycheck.logout'],
+              type: 'button-secondary',
+              onTap: function () {
+                $scope.logout();
+              }
+            },
+            {
+              text: translation['realitycheck.continue'],
+              type: 'button-positive',
+              onTap: function (e) {
+                if ($scope.data.interval <= 120 && $scope.data.interval >= 10) {
+                  if ($scope.sessionLoginId == $scope.realityCheckitems.loginid) {
+                    $scope.getLastInterval($scope.data.interval);
+                    $scope.data.start_interval = new Date().getTime();
+                    $scope.setStart($scope.data.start_interval);
+                    $scope.hasRealityCheck();
+                    appStateService.isPopupOpen = false;
+                  }
+                } else {
+                  e.preventDefault();
+                }
+              }
+            }
+          ]);
+        });
+      }
+    };
   }
 ]);
 /**
@@ -618,10 +835,9 @@ angular.module('binary').controller('SignInController', [
   '$scope',
   '$state',
   'appStateService',
-  function ($scope, $state, appStateService) {
-    if (typeof analytics !== 'undefined') {
-      analytics.trackView('Singin');
-    }
+  'analyticsService',
+  function ($scope, $state, appStateService, analyticsService) {
+    analyticsService.google.trackView('Singin');
     appStateService.invalidTokenRemoved = false;
     $scope.navigateToHelpPage = function () {
       $state.go('help');
@@ -639,78 +855,67 @@ angular.module('binary').controller('SignInController', [
 angular.module('binary').controller('TradeController', [
   '$scope',
   '$state',
-  '$ionicSlideBoxDelegate',
-  'marketService',
   'proposalService',
   'websocketService',
   'accountService',
   'alertService',
   'appStateService',
-  function ($scope, $state, $ionicSlideBoxDelegate, marketService, proposalService, websocketService, accountService, alertService, appStateService) {
+  'analyticsService',
+  function ($scope, $state, proposalService, websocketService, accountService, alertService, appStateService, analyticsService) {
     appStateService.waitForProposal = false;
+    $scope.currency = _.isEmpty(accountService.getDefault().currency) ? sessionStorage.currency : accountService.getDefault().currency;
     window.addEventListener('native.keyboardhide', function (e) {
-      $scope.hideFooter = false;
-      $scope.$apply();
+      $scope.$applyAsync(function () {
+        $scope.hideFooter = false;
+      });
     });
     window.addEventListener('native.keyboardshow', function (e) {
-      $scope.hideFooter = true;
-      $scope.$apply();
+      $scope.$applyAsync(function () {
+        $scope.hideFooter = true;
+      });
     });
     $scope.setTradeMode = function (mode) {
-      //$scope.tradeMode = mode;
       appStateService.tradeMode = mode;
     };
     $scope.getTradeMode = function () {
       return appStateService.tradeMode;
     };
     var init = function () {
-      if (typeof analytics !== 'undefined') {
-        analytics.trackView('Trade');
-      }
+      analyticsService.google.trackView('Trade');
       $scope.proposalToSend = JSON.parse(localStorage.proposal);
       $scope.setTradeMode(true);
       appStateService.purchaseMode = false;
-      proposalService.getCurrencies();
     };
     init();
-    $scope.$on('proposal', function (e, response) {
-      $scope.proposalRecieved = response;
-      appStateService.waitForProposal = false;
-      $scope.$apply();
-    });
-    $scope.$on('currencies', function (e, response) {
-      if (response && response.length > 0) {
-        $scope.currency = response[0];
-        $scope.$apply();
-        var proposal = proposalService.get();
-        if (proposal) {
-          proposal.currency = response[0];
-          proposalService.update(proposal);
-          proposalService.send();
-        }
-      }
-    });
     websocketService.sendRequestFor.forgetAll('balance');
     websocketService.sendRequestFor.balance();
+    $scope.$on('proposal', function (e, response) {
+      $scope.$applyAsync(function () {
+        $scope.proposalRecieved = response;
+        appStateService.waitForProposal = false;
+      });
+    });
     $scope.$on('balance', function (e, _balance) {
-      $scope.account = _balance;
-      $scope.$apply();
+      $scope.$applyAsync(function () {
+        $scope.account = _balance;
+      });
     });
     $scope.$on('purchase', function (e, _contractConfirmation) {
       if (_contractConfirmation.buy) {
-        $scope.setTradeMode(false);
-        appStateService.purchaseMode = true;
-        $scope.contract = {
-          contract_id: _contractConfirmation.buy.contract_id,
-          longcode: _contractConfirmation.buy.longcode,
-          payout: $scope.proposalRecieved.payout,
-          cost: _contractConfirmation.buy.buy_price,
-          profit: parseFloat($scope.proposalRecieved.payout) - parseFloat(_contractConfirmation.buy.buy_price),
-          balance: _contractConfirmation.buy.balance_after,
-          transaction_id: _contractConfirmation.buy.transaction_id
-        };
-        websocketService.sendRequestFor.portfolio();
-        $scope.$apply();
+        $scope.$applyAsync(function () {
+          $scope.setTradeMode(false);
+          appStateService.purchaseMode = true;
+          $scope.contract = {
+            contract_id: _contractConfirmation.buy.contract_id,
+            longcode: _contractConfirmation.buy.longcode,
+            payout: $scope.proposalRecieved.payout,
+            cost: _contractConfirmation.buy.buy_price,
+            profit: parseFloat($scope.proposalRecieved.payout) - parseFloat(_contractConfirmation.buy.buy_price),
+            balance: _contractConfirmation.buy.balance_after,
+            transaction_id: _contractConfirmation.buy.transaction_id
+          };
+          websocketService.sendRequestFor.portfolio();
+        });
       } else if (_contractConfirmation.error) {
         alertService.displayError(_contractConfirmation.error.message);
         $('.contract-purchase button').attr('disabled', false);
@@ -719,8 +924,7 @@ angular.module('binary').controller('TradeController', [
         alertService.contractError.notAvailable();
         $('.contract-purchase button').attr('disabled', false);
       }
-      websocketService.sendRequestFor.balance();  // it's moved to first if
-                                                  // websocketService.sendRequestFor.portfolio();
+      websocketService.sendRequestFor.balance();
     });
     $scope.$on('purchase:error', function (e, _error) {
       $('.contract-purchase button').attr('disabled', false);
@@ -729,41 +933,36 @@ angular.module('binary').controller('TradeController', [
     });
     $scope.$on('contract:finished', function (e, _contract) {
       if (_contract.exitSpot) {
-        if (_contract.result === 'win') {
-          $scope.contract.buyPrice = $scope.contract.cost;
-          $scope.contract.profit = $scope.contract.profit;
-          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.profit;
-          websocketService.sendRequestFor.openContract();
-        } else if (_contract.result === 'lose') {
-          $scope.contract.buyPrice = $scope.contract.cost;
-          $scope.contract.loss = $scope.contract.cost * -1;
-          $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.loss;
-        }
-        $scope.contract.result = _contract.result;
-        // Unlock view to navigate
-        appStateService.purchaseMode = false;
-        var proposal = JSON.parse(localStorage.proposal);
-        // Send statistic to Google Analytics
-        if (typeof analytics !== 'undefined') {
-          analytics.trackEvent($scope.account.loginid, proposal.symbol, proposal.contract_type, $scope.proposalRecieved.payout);
-        }
-        //else{
-        var ampEventProperties = {
-            Symbol: proposal.symbol,
-            TradeType: proposal.contract_type,
-            Stake: proposal.basis === 'payout' ? $scope.proposalRecieved.ask_price : proposal.ammount,
-            Market: proposal.passthrough.market,
-            Duration: proposal.duration,
-            DurationUnit: proposal.duration_unit,
-            result: _contract.result === 'lose' ? 'Lost' : 'Won'
-          };
-        // Send statistic to Amplitude
-        amplitude.logEvent('Purchase', ampEventProperties);
-        //}
-        proposalService.send();
-        if (!$scope.$$phase) {
-          $scope.$apply();
-        }
+        $scope.$applyAsync(function () {
+          if (_contract.result === 'win') {
+            $scope.contract.buyPrice = $scope.contract.cost;
+            $scope.contract.profit = $scope.contract.profit;
+            $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.profit;
+            websocketService.sendRequestFor.openContract();
+          } else if (_contract.result === 'lose') {
+            $scope.contract.buyPrice = $scope.contract.cost;
+            $scope.contract.loss = $scope.contract.cost * -1;
+            $scope.contract.finalPrice = $scope.contract.buyPrice + $scope.contract.loss;
+          }
+          $scope.contract.result = _contract.result;
+          // Unlock view to navigate
+          appStateService.purchaseMode = false;
+          var proposal = JSON.parse(localStorage.proposal);
+          // Send statistic to Google Analytics
+          analyticsService.google.trackEvent($scope.account.loginid, proposal.symbol, proposal.contract_type, $scope.proposalRecieved.payout);
+          var ampEventProperties = {
+              Symbol: proposal.symbol,
+              TradeType: proposal.contract_type,
+              Stake: proposal.basis === 'payout' ? $scope.proposalRecieved.ask_price : proposal.ammount,
+              Market: proposal.passthrough.market,
+              Duration: proposal.duration,
+              DurationUnit: proposal.duration_unit,
+              result: _contract.result === 'lose' ? 'Lost' : 'Won'
+            };
+          // Send statistic to Amplitude
+          analyticsService.amplitude.logEvent('Purchase', ampEventProperties);
+          proposalService.send();
+        });
       }
     });
     $scope.$on('proposal:open-contract', function (e, contract) {
@@ -933,9 +1132,7 @@ angular.module('binary').service('accountService', [
           _token = accountList[defaultAccountIndex].token;
         }
       }
-      validate(_token, extraParams);  // setInterval(function() {
-                                      // 	validate(_token);
-                                      // }, 1000);
+      validate(_token, extraParams);
     };
     /**
 			 * Add an account to the 'accounts' localStorage
@@ -1066,6 +1263,26 @@ angular.module('binary').service('alertService', [
         navigator.notification.confirm(_message, _callback, _title, _buttons);
       }
     };
+    this.displayRealitCheckInterval = function (_title, _class, scope, _template, _buttons, _callback) {
+      var showPopup = $ionicPopup.show({
+          title: _title,
+          cssClass: _class,
+          scope: scope,
+          templateUrl: _template,
+          buttons: _buttons
+        });
+      showPopup.then(_callback);
+    };
+    this.displayRealityCheckResult = function (_title, _class, scope, _template, _buttons, _callback) {
+      var showPopup = $ionicPopup.show({
+          title: _title,
+          cssClass: _class,
+          scope: scope,
+          templateUrl: _template,
+          buttons: _buttons
+        });
+      showPopup.then(_callback);
+    };
     this.displayError = function (_message) {
       $translate(['alert.error']).then(function (translation) {
         displayAlert(translation['alert.error'], _message);
@@ -1088,12 +1305,12 @@ angular.module('binary').service('alertService', [
           displayAlert(translation['alert.error'], translation['alert.not_valid']);  //navigator.notification.alert(translation['alert.not_valid'], null, translation['alert.error'], 'OK');
         });
       },
-      tokenNotAuthenticated: function () {
+      tokenNotAuthenticated: function (message) {
         $translate([
           'alert.error',
           'alert.not_auth'
         ]).then(function (translation) {
-          displayAlert(translation['alert.error'], translation['alert.not_auth']);
+          displayAlert(message ? message : translation['alert.error'], translation['alert.not_auth']);
         });
       },
       tokenNotUnique: function () {
@@ -1144,7 +1361,6 @@ angular.module('binary').service('alertService', [
               res = false;
           }
           if (res) {
-            console.log('You are sure');
             $rootScope.$broadcast('token:remove', _token);
           }
         });
@@ -1175,6 +1391,37 @@ angular.module('binary').service('alertService', [
   }
 ]);
 /**
+ * @name analyticsService
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 07/17/2016
+ * @copyright Binary Ltd
+ * Send information to all analytics services
+ */
+angular.module('binary').factory('analyticsService', function () {
+  var factory = {};
+  factory.google = {
+    trackView: function (_view) {
+      if (typeof analytics !== 'undefined') {
+        analytics.trackView(_view);
+      }
+    },
+    trackEvent: function (id, symbole, contractType, payout) {
+      if (typeof analytics !== 'undefined') {
+        analytics.trackEvent(id, symbole, contractType, payout);
+      }
+    }
+  };
+  factory.amplitude = {
+    logEvent: function (title, data) {
+      if (amplitude !== 'undefined') {
+        amplitude.logEvent(title, data);
+      }
+    }
+  };
+  return factory;
+});
+/**
  * @name appStateService
  * @author Morteza Tavanarad
  * @contributors []
@@ -1187,9 +1434,12 @@ angular.module('binary').factory('appStateService', function () {
   factory.tradeMode = true;
   factory.purchaseMode = false;
   factory.isLoggedin = false;
+  factory.isRealityChecked = false;
   factory.waitForProposal = false;
   factory.scopes = [];
   factory.invalidTokenRemoved = false;
+  factory.isChangedAccount = false;
+  factory.isPopupOpen = false;
   return factory;
 });
 /**
@@ -2411,7 +2661,6 @@ angular.module('binary').service('languageService', [
       $rootScope.$broadcast('language:updated');
       $translate.use(language);
     };
-    // TODO: remove
     this.read = function () {
       var language = localStorage['language'];
       return language ? language : 'en';
@@ -2579,7 +2828,7 @@ angular.module('binary').service('marketService', [
       return symbols;
     };
     this.fixOrder = function () {
-      if (!sessionStorage.active_symbols) {
+      if (!sessionStorage.active_symbols || sessionStorage.active_symbols === 'null') {
         return;
       }
       var symbols = JSON.parse(sessionStorage.active_symbols);
@@ -2713,10 +2962,14 @@ angular.module('binary').service('marketService', [
       sessionStorage.asset_index = null;
     };
     this.hasActiveSymobols = function () {
-      return sessionStorage.active_symbols;
+      if (!sessionStorage.active_symbols)
+        return false;
+      return JSON.parse(sessionStorage.active_symbols);
     };
     this.hasAssetIndex = function () {
-      return sessionStorage.asset_index;
+      if (!sessionStorage.asset_index)
+        return false;
+      return JSON.parse(sessionStorage.asset_index);
     };
   }
 ]);
@@ -2780,9 +3033,6 @@ angular.module('binary').service('proposalService', [
     this.remove = function () {
       localStorage.removeItem('proposal');
     };
-    this.getCurrencies = function () {
-      websocketService.sendRequestFor.currencies();
-    };
   }
 ]);
 /**
@@ -2803,19 +3053,23 @@ angular.module('binary').factory('websocketService', [
   function ($rootScope, localStorageService, alertService, appStateService, $state, config) {
     var dataStream = '';
     var messageBuffer = [];
-    var waitForConnection = function (callback) {
+    var waitForConnection = function (callback, isAuthonticationRequest) {
       if (dataStream.readyState === 3) {
         init();
-        setTimeout(function () {
-          waitForConnection(callback);
-        }, 1000);
+        if (!isAuthonticationRequest) {
+          setTimeout(function () {
+            waitForConnection(callback);
+          }, 1000);
+        }
       } else if (dataStream.readyState === 1) {
         callback();
       } else if (!(dataStream instanceof WebSocket)) {
         init();
-        setTimeout(function () {
-          waitForConnection(callback);
-        }, 1000);
+        if (!isAuthonticationRequest) {
+          setTimeout(function () {
+            waitForConnection(callback);
+          }, 1000);
+        }
       } else {
         setTimeout(function () {
           waitForConnection(callback);
@@ -2825,7 +3079,7 @@ angular.module('binary').factory('websocketService', [
     var sendMessage = function (_data) {
       waitForConnection(function () {
         dataStream.send(JSON.stringify(_data));
-      });
+      }, _data.hasOwnProperty('authorize'));
     };
     var init = function (forced) {
       forced = forced || false;
@@ -2838,10 +3092,8 @@ angular.module('binary').factory('websocketService', [
       dataStream = null;
       appStateService.isLoggedin = false;
       dataStream = new WebSocket(config.wsUrl + '?app_id=' + config.app_id + '&l=' + language);
-      //dataStream = new WebSocket('wss://www.binaryqa07.com/websockets/v3?l=' + language);
       dataStream.onopen = function () {
         sendMessage({ ping: 1 });
-        // CLEANME
         // Authorize the default token if it's exist
         var token = localStorageService.getDefaultToken();
         if (token) {
@@ -2852,10 +3104,7 @@ angular.module('binary').factory('websocketService', [
           sendMessage(data);
         }
         console.log('socket is opened');
-        $rootScope.$broadcast('connection:ready');  // if(typeof(analytics) !== "undefined"){
-                                                    // 	analytics.trackEvent('WebSocket', 'OpenConnection', 'OpenConnection', 25);
-                                                    // }
-                                                    //dataStream.send(JSON.stringify({ping: 1}));
+        $rootScope.$broadcast('connection:ready');
       };
       dataStream.onmessage = function (message) {
         receiveMessage(message);
@@ -2868,7 +3117,6 @@ angular.module('binary').factory('websocketService', [
         $rootScope.$broadcast('connection:reopened');
       };
       dataStream.onerror = function (e) {
-        //console.log('error in socket ', e);
         if (e.target.readyState == 3) {
           $rootScope.$broadcast('connection:error');
         }
@@ -2878,120 +3126,7 @@ angular.module('binary').factory('websocketService', [
     $rootScope.$on('language:updated', function () {
       init(true);
     });
-    var receiveMessage = function (_response) {
-      var message = JSON.parse(_response.data);
-      if (message) {
-        if (message.error) {
-          if (message.error.code === 'InvalidToken') {
-            localStorageService.manageInvalidToken();
-          }
-        }
-        var messageType = message.msg_type;
-        switch (messageType) {
-        case 'authorize':
-          if (message.authorize) {
-            message.authorize.token = message.echo_req.authorize;
-            window._trackJs.userId = message.authorize.loginid;
-            appStateService.isLoggedin = true;
-            appStateService.scopes = message.authorize.scopes;
-            amplitude.setUserId(message.authorize.loginid);
-            $rootScope.$broadcast('authorize', message.authorize, message['req_id'], message['passthrough']);
-          } else {
-            if (message.hasOwnProperty('error') && message.error.code === 'InvalidToken') {
-              localStorageService.removeToken(message.echo_req.authorize);
-            }
-            $rootScope.$broadcast('authorize', false);
-            appStateService.isLoggedin = false;
-          }
-          break;
-        case 'active_symbols':
-          var markets = message.active_symbols;
-          var groupedMarkets = _.groupBy(markets, 'market');
-          var openMarkets = {};
-          for (var key in groupedMarkets) {
-            if (groupedMarkets.hasOwnProperty(key)) {
-              if (groupedMarkets[key][0].exchange_is_open == 1) {
-                openMarkets[key] = groupedMarkets[key];
-              }
-            }
-          }
-          if (!sessionStorage.hasOwnProperty('active_symbols') || sessionStorage.active_symbols != JSON.stringify(openMarkets)) {
-            sessionStorage.active_symbols = JSON.stringify(openMarkets);
-            $rootScope.$broadcast('symbols:updated');
-          }
-          break;
-        case 'asset_index':
-          if (!sessionStorage.hasOwnProperty('asset_index') || sessionStorage.asset_index != JSON.stringify(message.asset_index)) {
-            sessionStorage.asset_index = JSON.stringify(message.asset_index);
-            $rootScope.$broadcast('assetIndex:updated');
-          }
-          break;
-        case 'payout_currencies':
-          //sessionStorage.currencies = JSON.stringify(message.payout_currencies);
-          $rootScope.$broadcast('currencies', message.payout_currencies);
-          break;
-        case 'proposal':
-          if (message.proposal) {
-            $rootScope.$broadcast('proposal', message.proposal);
-          } else if (message.error) {
-            $rootScope.$broadcast('proposal:error', message.error);
-          }
-          break;
-        case 'contracts_for':
-          var symbol = message.echo_req.contracts_for;
-          var groupedSymbol = _.groupBy(message.contracts_for.available, 'contract_type');
-          $rootScope.$broadcast('symbol', groupedSymbol);
-          break;
-        case 'buy':
-          if (message.error) {
-            $rootScope.$broadcast('purchase:error', message.error);
-            alertService.displayError(message.error.message);
-          } else {
-            $rootScope.$broadcast('purchase', message);
-          }
-          break;
-        case 'balance':
-          if (!(message.error && message.error.code === 'AlreadySubscribed')) {
-            $rootScope.$broadcast('balance', message.balance);
-          }
-          break;
-        case 'tick':
-          $rootScope.$broadcast('tick', message);
-          break;
-        case 'history':
-          $rootScope.$broadcast('history', message);
-          break;
-        case 'candles':
-          $rootScope.$broadcast('candles', message);
-          break;
-        case 'ohlc':
-          $rootScope.$broadcast('ohlc', message);
-          break;
-        case 'portfolio':
-          $rootScope.$broadcast('portfolio', message.portfolio);
-          break;
-        case 'profit_table':
-          $rootScope.$broadcast('profit_table:update', message.profit_table, message.echo_req.passthrough);
-          break;
-        case 'sell_expired':
-          $rootScope.$broadcast('sell:expired', message.sell_expired);
-          break;
-        case 'proposal_open_contract':
-          $rootScope.$broadcast('proposal:open-contract', message.proposal_open_contract);
-          break;
-        default:  //console.log('another message type: ', message);
-        }
-      }
-    };
     var websocketService = {};
-    //			websocketService.init = function() {
-    //				setInterval(function restart() {
-    //					if (!dataStream || dataStream.readyState === 3) {
-    //						init();
-    //					}
-    //					return restart;
-    //				}(), 1000);
-    //			};
     websocketService.authenticate = function (_token, extraParams) {
       extraParams = null || extraParams;
       appStateService.isLoggedin = false;
@@ -3092,11 +3227,140 @@ angular.module('binary').factory('websocketService', [
       sellExpiredContract: function () {
         var data = { sell_expired: 1 };
         sendMessage(data);
+      },
+      landingCompanyDetails: function (company) {
+        var data = { landing_company_details: company };
+        sendMessage(data);
+      },
+      realityCheck: function () {
+        var data = { 'reality_check': 1 };
+        sendMessage(data);
+      },
+      ping: function () {
+        var data = { ping: 1 };
+        sendMessage(data);
       }
     };
     websocketService.closeConnection = function () {
       if (dataStream) {
         dataStream.close();
+      }
+    };
+    var receiveMessage = function (_response) {
+      var message = JSON.parse(_response.data);
+      if (message) {
+        if (message.error) {
+          if (message.error.code === 'InvalidToken') {
+            localStorageService.manageInvalidToken();
+          }
+        }
+        var messageType = message.msg_type;
+        switch (messageType) {
+        case 'authorize':
+          if (message.authorize) {
+            message.authorize.token = message.echo_req.authorize;
+            window._trackJs.userId = message.authorize.loginid;
+            appStateService.isLoggedin = true;
+            appStateService.scopes = message.authorize.scopes;
+            amplitude.setUserId(message.authorize.loginid);
+            if (_.isEmpty(message.authorize.currency)) {
+              websocketService.sendRequestFor.currencies();
+            } else {
+              sessionStorage.currency = message.authorize.currency;
+            }
+            $rootScope.$broadcast('authorize', message.authorize, message['req_id'], message['passthrough']);
+          } else {
+            var errorMessage = 'Unexpected Error!';
+            if (message.hasOwnProperty('error')) {
+              localStorageService.removeToken(message.echo_req.authorize);
+              errorMessage = message.error.message;
+            }
+            $rootScope.$broadcast('authorize', false, errorMessage);
+            appStateService.isLoggedin = false;
+          }
+          break;
+        case 'active_symbols':
+          var markets = message.active_symbols;
+          var groupedMarkets = _.groupBy(markets, 'market');
+          var openMarkets = {};
+          for (var key in groupedMarkets) {
+            if (groupedMarkets.hasOwnProperty(key)) {
+              if (groupedMarkets[key][0].exchange_is_open == 1) {
+                openMarkets[key] = groupedMarkets[key];
+              }
+            }
+          }
+          if (!sessionStorage.hasOwnProperty('active_symbols') || sessionStorage.active_symbols != JSON.stringify(openMarkets)) {
+            sessionStorage.active_symbols = JSON.stringify(openMarkets);
+            $rootScope.$broadcast('symbols:updated');
+          }
+          break;
+        case 'asset_index':
+          if (!sessionStorage.hasOwnProperty('asset_index') || sessionStorage.asset_index != JSON.stringify(message.asset_index)) {
+            sessionStorage.asset_index = JSON.stringify(message.asset_index);
+            $rootScope.$broadcast('assetIndex:updated');
+          }
+          break;
+        case 'payout_currencies':
+          $rootScope.$broadcast('currencies', message.payout_currencies);
+          break;
+        case 'proposal':
+          if (message.proposal) {
+            $rootScope.$broadcast('proposal', message.proposal);
+          } else if (message.error) {
+            $rootScope.$broadcast('proposal:error', message.error);
+          }
+          break;
+        case 'contracts_for':
+          var symbol = message.echo_req.contracts_for;
+          var groupedSymbol = _.groupBy(message.contracts_for.available, 'contract_type');
+          $rootScope.$broadcast('symbol', groupedSymbol);
+          break;
+        case 'buy':
+          if (message.error) {
+            $rootScope.$broadcast('purchase:error', message.error);
+            alertService.displayError(message.error.message);
+          } else {
+            $rootScope.$broadcast('purchase', message);
+          }
+          break;
+        case 'balance':
+          if (!(message.error && message.error.code === 'AlreadySubscribed')) {
+            $rootScope.$broadcast('balance', message.balance);
+          }
+          break;
+        case 'tick':
+          $rootScope.$broadcast('tick', message);
+          break;
+        case 'history':
+          $rootScope.$broadcast('history', message);
+          break;
+        case 'candles':
+          $rootScope.$broadcast('candles', message);
+          break;
+        case 'ohlc':
+          $rootScope.$broadcast('ohlc', message);
+          break;
+        case 'portfolio':
+          $rootScope.$broadcast('portfolio', message.portfolio);
+          break;
+        case 'profit_table':
+          $rootScope.$broadcast('profit_table:update', message.profit_table, message.echo_req.passthrough);
+          break;
+        case 'sell_expired':
+          $rootScope.$broadcast('sell:expired', message.sell_expired);
+          break;
+        case 'proposal_open_contract':
+          $rootScope.$broadcast('proposal:open-contract', message.proposal_open_contract);
+          break;
+        case 'landing_company_details':
+          $rootScope.$broadcast('landing_company_details', message.landing_company_details);
+          break;
+        case 'reality_check':
+          $rootScope.$broadcast('reality_check', message.reality_check);
+          break;
+        default:
+        }
       }
     };
     return websocketService;
@@ -3139,6 +3403,9 @@ angular.module('binary').directive('changeAccount', [
         };
         init();
         scope.updateAccount = function (_selectedAccount) {
+          appStateService.isChangedAccount = true;
+          sessionStorage.removeItem('start');
+          sessionStorage.removeItem('_interval');
           scope.setDataLoaded(false);
           accountService.setDefault(_selectedAccount);
           accountService.validate();
@@ -3147,6 +3414,30 @@ angular.module('binary').directive('changeAccount', [
         scope.navigateToManageAccounts = function () {
           $state.go('accounts');
         };
+      }
+    };
+  }
+]);
+/**
+ * @name currencyDirective
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 07/27/2016
+ * @copyright Binary Ltd
+ * Directive to listen to currency event 
+ * to update the currency value in session storage.
+ */
+angular.module('binary').directive('currency', [
+  'proposalService',
+  function (proposalService) {
+    return {
+      restrict: 'E',
+      link: function (scope) {
+        scope.$on('currencies', function (e, response) {
+          if (response && response.length > 0) {
+            sessionStorage.currency = response[0];
+          }
+        });
       }
     };
   }
@@ -3167,7 +3458,8 @@ angular.module('binary').directive('manageAccounts', [
   'marketService',
   'proposalService',
   'appStateService',
-  function (accountService, alertService, cleanupService, $state, languageService, marketService, proposalService, appStateService) {
+  '$ionicLoading',
+  function (accountService, alertService, cleanupService, $state, languageService, marketService, proposalService, appStateService, $ionicLoading) {
     return {
       restrict: 'E',
       templateUrl: 'templates/components/accounts/manage-accounts.template.html',
@@ -3175,37 +3467,33 @@ angular.module('binary').directive('manageAccounts', [
         var requestId = null;
         scope.accounts = accountService.getAll();
         scope.$on('authorize', function (e, response, reqId) {
-          // TODO: Add spinner
-          scope.showSpinner = false;
-          if (reqId === requestId) {
-            if (response) {
+          $ionicLoading.hide();
+          if (response) {
+            if (reqId === requestId) {
               if (accountService.isUnique(response.loginid)) {
-                accountService.add(response);
-                accountService.setDefault(response.token);
-                scope.accounts = accountService.getAll();
-                if (!scope.$$phase) {
-                  scope.$apply();
-                }
+                scope.$applyAsync(function () {
+                  accountService.add(response);
+                  accountService.setDefault(response.token);
+                  scope.accounts = accountService.getAll();
+                });
               } else {
                 if (scope.settingDefault) {
                   scope.settingDefault = false;
                 } else {
                   alertService.accountError.tokenNotUnique();
                 }
-              }
-              // reloading language setting
-              languageService.set();
-            } else {
-              alertService.accountError.tokenNotAuthenticated();
+              }  // reloading language setting
+                 //languageService.set();
             }
+          } else {
+            alertService.accountError.tokenNotAuthenticated(reqId);
           }
         });
         scope.$on('token:remove', function (e, response) {
-          accountService.remove(response);
-          scope.accounts = accountService.getAll();
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            accountService.remove(response);
+            scope.accounts = accountService.getAll();
+          });
         });
         var cleanLocalData = function () {
           // Clearing local data
@@ -3215,14 +3503,18 @@ angular.module('binary').directive('manageAccounts', [
           appStateService.isLoggedin = false;
         };
         scope.addAccount = function (_token) {
+          $ionicLoading.show();
           requestId = new Date().getTime();
           scope.showSpinner = false;
           // Validate the token
           if (_token && _token.length === 15) {
-            scope.showSpinner = true;
             cleanLocalData();
             accountService.validate(_token, { req_id: requestId });
+            appStateService.isChangedAccount = true;
+            sessionStorage.removeItem('start');
+            sessionStorage.removeItem('_interval');
           } else {
+            $ionicLoading.hide();
             alertService.accountError.tokenNotValid();
           }
         };
@@ -3234,8 +3526,13 @@ angular.module('binary').directive('manageAccounts', [
           scope.settingDefault = true;
           cleanLocalData();
           accountService.setDefault(_token);
+          $ionicLoading.show();
           accountService.validate(null, { req_id: requestId });
           scope.accounts = accountService.getAll();
+          sessionStorage.clear('_interval');
+          appStateService.isChangedAccount = true;
+          sessionStorage.removeItem('start');
+          sessionStorage.removeItem('_interval');
         };
       }
     };
@@ -3290,6 +3587,7 @@ angular.module('binary').directive('oauth', [
               accountService.add(accounts[a]);
             }
           }
+          $ionicLoading.hide();
         });
         scope.signin = function () {
           var authWindow = window.open(config.oauthUrl + '?app_id=' + config.app_id + '&l=' + languageService.read(), '_blank', 'location=no,toolbar=no');
@@ -3364,15 +3662,17 @@ angular.module('binary').directive('scopeMessage', [
           if (!_athurize) {
             return;
           }
-          if (!scope.$$phase) {
+          scope.$applyAsync(function () {
             scope.showScopeMessage = !accountService.checkScope([
               'READ',
               'TRADE'
             ]);
-          }
+          });
         });
         scope.$on('logout', function (e) {
-          scope.showScopeMessage = false;
+          scope.$applyAsync(function () {
+            scope.showScopeMessage = false;
+          });
         });
       }
     };
@@ -3392,10 +3692,8 @@ angular.module('binary').directive('signin', [
   'websocketService',
   'alertService',
   '$state',
-  '$ionicPopup',
-  '$compile',
   '$ionicLoading',
-  function (accountService, languageService, websocketService, alertService, $state, $ionicPopup, $compile, $ionicLoading) {
+  function (accountService, languageService, websocketService, alertService, $state, $ionicLoading) {
     return {
       restrict: 'E',
       templateUrl: 'templates/components/accounts/signin.template.html',
@@ -3408,7 +3706,6 @@ angular.module('binary').directive('signin', [
 				 * If default account is set, send it for validation
 				 */
         var init = function () {
-          //websocketService.init();
           scope.language = languageService.read();
         };
         init();
@@ -3419,7 +3716,6 @@ angular.module('binary').directive('signin', [
               accountService.add(response);
               accountService.setDefault(response.token);
             }
-            //languageService.set();
             scope.token = '';
             $state.go('options');
           } else {
@@ -3432,8 +3728,6 @@ angular.module('binary').directive('signin', [
 				 */
         scope.signIn = function () {
           var _token = scope.token;
-          // Set the user's language
-          //languageService.update(scope.language);
           // Validate the token
           if (_token && _token.length === 15) {
             $ionicLoading.show();
@@ -3445,26 +3739,25 @@ angular.module('binary').directive('signin', [
         scope.changeLanguage = function () {
           languageService.update(scope.language);
         };
+        // change different type of singing methods
         scope.changeSigninView = function (_isBack) {
           _isBack = _isBack || false;
-          if (!scope.showSignin && scope.showTokenForm) {
-            scope.showTokenForm = false;
-            scope.showSignin = true;
-          } else if (scope.showSignin && !scope.showTokenForm && _isBack) {
-            scope.showSignin = false;
-          } else if (scope.showSigninView && !scope.showTokenForm) {
-            scope.showTokenForm = true;
-            scope.showSignin = false;
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            if (!scope.showSignin && scope.showTokenForm) {
+              scope.showTokenForm = false;
+              scope.showSignin = true;
+            } else if (scope.showSignin && !scope.showTokenForm && _isBack) {
+              scope.showSignin = false;
+            } else if (scope.showSigninView && !scope.showTokenForm) {
+              scope.showTokenForm = true;
+              scope.showSignin = false;
+            }
+          });
         };
         scope.showSigninView = function () {
-          scope.showSignin = true;
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            scope.showSignin = true;
+          });
         };
       }
     };
@@ -3486,12 +3779,11 @@ angular.module('binary').directive('appUpdate', [
       templateUrl: 'templates/components/codepush/app-update.template.html',
       link: function (scope, element, attrs, ngModel) {
         scope.hide = function () {
-          scope.isShown = false;
-          scope.showSpinner = false;
-          scope.isDownloading = false;
-          if (!scope.$$phase && !scope.$root.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            scope.isShown = false;
+            scope.showSpinner = false;
+            scope.isDownloading = false;
+          });
         };
         // Use codepush to check new update and install it.
         $ionicPlatform.ready(function () {
@@ -3501,69 +3793,58 @@ angular.module('binary').directive('appUpdate', [
           scope.progress = 0;
           if (window.codePush) {
             codePush.sync(function (syncStatus) {
-              scope.isShown = false;
-              scope.showSpinner = false;
-              scope.isDownloading = false;
-              switch (syncStatus) {
-              // Result (final) statuses
-              case SyncStatus.UPDATE_INSTALLED:
-                scope.isShown = true;
+              scope.$applyAsync(function () {
+                scope.isShown = false;
+                scope.showSpinner = false;
                 scope.isDownloading = false;
-                scope.message = 'update.installed';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UP_TO_DATE:
-                //console.log("The application is up to date.");
-                scope.message = 'update.up_to_date';
-                setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.UPDATE_IGNORED:
-                //alertService.displayAlert("Update","The user decided not to install the optional update.");
-                break;
-              case SyncStatus.ERROR:
-                //alertService.displayAlert("Update","An error occured while checking for updates");
-                scope.isDownloading = false;
-                scope.message = 'update.error';
-                setTimeout(scope.hide, 5000);
-                break;
-              // Intermediate (non final) statuses
-              case SyncStatus.CHECKING_FOR_UPDATE:
-                //console.log("Checking for update.");
-                scope.message = 'update.check_for_update';
-                scope.showSpinner = true;
-                break;
-              case SyncStatus.AWAITING_USER_ACTION:
-                //console.log("Alerting user.");
-                break;
-              case SyncStatus.DOWNLOADING_PACKAGE:
-                scope.isShown = true;
-                //console.log("Downloading package.");
-                scope.isDownloading = true;
-                scope.message = 'update.downloading';
-                //setTimeout(scope.hide, 5000);
-                break;
-              case SyncStatus.INSTALLING_UPDATE:
-                scope.isShown = true;
-                //console.log("Installing update");
-                scope.message = 'installing';
-                scope.showSpinner = true;
-                setTimeout(scope.hide, 5000);
-                break;
-              }
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
+                switch (syncStatus) {
+                // Result (final) statuses
+                case SyncStatus.UPDATE_INSTALLED:
+                  scope.isShown = true;
+                  scope.isDownloading = false;
+                  scope.message = 'update.installed';
+                  setTimeout(scope.hide, 5000);
+                  break;
+                case SyncStatus.UP_TO_DATE:
+                  scope.message = 'update.up_to_date';
+                  setTimeout(scope.hide, 5000);
+                  break;
+                case SyncStatus.UPDATE_IGNORED:
+                  break;
+                case SyncStatus.ERROR:
+                  scope.isDownloading = false;
+                  scope.message = 'update.error';
+                  setTimeout(scope.hide, 5000);
+                  break;
+                // Intermediate (non final) statuses
+                case SyncStatus.CHECKING_FOR_UPDATE:
+                  scope.message = 'update.check_for_update';
+                  scope.showSpinner = true;
+                  break;
+                case SyncStatus.AWAITING_USER_ACTION:
+                  break;
+                case SyncStatus.DOWNLOADING_PACKAGE:
+                  scope.isShown = true;
+                  scope.isDownloading = true;
+                  scope.message = 'update.downloading';
+                  break;
+                case SyncStatus.INSTALLING_UPDATE:
+                  scope.isShown = true;
+                  scope.message = 'installing';
+                  scope.showSpinner = true;
+                  setTimeout(scope.hide, 5000);
+                  break;
+                }
+              });
             }, {
               installMode: InstallMode.IMMEDIATE,
               updateDialog: true
             }, function (downloadProgress) {
-              scope.isShown = true;
-              scope.isDownloading = true;
-              //console.log("Downloading " + downloadProgress.receivedBytes + " of " + downloadProgress.totalBytes + " bytes.");
-              scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
-              if (!scope.$$phase && !scope.$root.$$phase) {
-                scope.$apply();
-              }
+              scope.$applyAsync(function () {
+                scope.isShown = true;
+                scope.isDownloading = true;
+                scope.progress = downloadProgress.receivedBytes * 100 / downloadProgress.totalBytes;
+              });
             });
           }
         });
@@ -3591,6 +3872,369 @@ angular.module('binary').directive('languageList', [
           languageService.update(scope.language);
         };
       }
+    };
+  }
+]);
+/**
+ * @name digitsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('digitsOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/digits.template.html',
+      link: function (scope, element, attrs) {
+        scope.attrs = attrs;
+        var hideDigit = function hideDigit(hideDigit) {
+          var digitIndex = scope.digits.indexOf(hideDigit);
+          if (digitIndex < 0) {
+            return;
+          }
+          scope.digits.splice(digitIndex, 1);
+          if (scope.$parent.selected.digit == hideDigit) {
+            scope.$parent.selected.digit = scope.digits[0];
+          }
+        };
+        scope.digits = [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ];
+        scope.$parent.selected.digit = marketService.getDefault.digit();
+        scope.$parent.$watch('hideDigit', function (value) {
+          if (scope.$parent != null) {
+            scope.digits = [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ];
+            scope.$parent.selected.digit = marketService.getDefault.digit();
+            if (!isNaN(value)) {
+              hideDigit(parseInt(value));
+            }
+          }
+        });
+        scope.updateDigit = function (_digit) {
+          scope.$parent.selected.digit = _digit;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name marketsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('marketsOption', [
+  'marketService',
+  'alertService',
+  function (marketService, alertService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/markets.template.html',
+      link: function (scope, element, attrs) {
+        scope.showSymbolWarning = true;
+        /**
+				 * Get all symbols for the selected market
+				 * @param  {String} _market Selected Market
+				 */
+        var updateSymbols = function (_market) {
+          scope.$applyAsync(function () {
+            scope.symbols = marketService.getAllSymbolsForAMarket(_market);
+            if (scope.symbols.length > 0) {
+              scope.$parent.selected.symbol = marketService.getDefault.symbol(_market, scope.symbols);
+              marketService.getSymbolDetails(scope.$parent.selected.symbol);
+            } else {
+              // If there is not any symbol that has tick support, a empty array broadcast for symbol
+              scope.$broadcast('symbol', []);
+              if (scope.showSymbolWarning) {
+                scope.showSymbolWarning = false;
+                alertService.displaySymbolWarning('alert.no_underlying');
+                scope.$watch(function () {
+                  return scope.$parent.selected.market;
+                }, function (newVal, oldVal) {
+                  if (newVal !== oldVal)
+                    scope.showSymbolWarning = true;
+                });
+              }
+            }
+          });
+        };
+        /**
+				 * init function - to run on the page load
+				 * Get forex and random markets
+				 * Set the default/selected market
+				 */
+        var init = function () {
+          if (marketService.hasActiveSymobols() && marketService.hasAssetIndex()) {
+            try {
+              scope.$applyAsync(function () {
+                marketService.fixOrder();
+                var markets = marketService.getActiveMarkets();
+                scope.market = { forex: markets.indexOf('forex') !== -1 ? true : false };
+                if (markets.indexOf('volidx') >= 0) {
+                  scope.market.volidx = true;
+                } else if (markets.indexOf('random') >= 0) {
+                  scope.market.random = true;
+                }
+                scope.$parent.selected.market = marketService.getDefault.market(scope.market);
+                updateSymbols(scope.$parent.selected.market);
+              });
+            } catch (error) {
+              console.log(error);
+            }
+          }
+        };
+        init();
+        scope.$on('symbols:updated', function (e, _symbol) {
+          init();
+        });
+        scope.$on('assetIndex:updated', function (e, _symbol) {
+          init();
+        });
+        scope.updateMarket = function (_market) {
+          // To disable "Let's trade" button until all data is loaded
+          scope.setDataLoaded(false);
+          scope.$parent.selected.market = _market;
+          updateSymbols(scope.$parent.selected.market);
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+        scope.isRandom = function () {
+          var markets = marketService.getActiveMarkets();
+          return markets.indexOf('random') > -1;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name payoutStakeOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('payoutStakeOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/payout-stake.template.html',
+      link: function (scope, element, attrs) {
+        scope.$parent.selected.basis = marketService.getDefault.basis();
+        scope.updateBasis = function (_basis) {
+          scope.$parent.selected.basis = _basis;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name symbolsOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('symbolsOption', [
+  'marketService',
+  'alertService',
+  'config',
+  function (marketService, alertService, config) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/symbols.template.html',
+      link: function (scope, element, attrs) {
+        scope.tradeTypes = config.tradeTypes;
+        scope.$on('symbol', function (e, _symbol) {
+          scope.$applyAsync(function () {
+            if (!_.isEmpty(_symbol)) {
+              scope.tradeTypes = marketService.getTradeTypes(_symbol);
+              scope.$parent.selected.tradeType = marketService.getDefault.tradeType(scope.tradeTypes);
+              // Assigning "true" to isDataLoaded to enable "Let's trade" button
+              scope.setDataLoaded(true);
+            } else {
+              // Assigning "false" to isDataLoaded to disable "Let's trade" button
+              scope.setDataLoaded(true, false);
+            }
+          });
+        });
+        scope.updateSymbol = function (_selectedSymbol) {
+          scope.$parent.selected.symbol = _selectedSymbol;
+          marketService.getSymbolDetails(scope.$parent.selected.symbol);
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name ticksOption
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/10/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('ticksOption', [
+  'marketService',
+  function (marketService) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/ticks.template.html',
+      link: function (scope, element, attrs) {
+        scope.ticks = [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ];
+        scope.$parent.selected.tick = marketService.getDefault.tick();
+        scope.updateTick = function (_tick) {
+          scope.$parent.selected.tick = _tick;
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+      }
+    };
+  }
+]);
+/**
+ * @name tradeCategory
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 02/12/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('tradeCategory', [
+  'marketService',
+  'config',
+  '$ionicScrollDelegate',
+  function (marketService, config, $ionicScrollDelegate) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/options/trade-category.template.html',
+      link: function (scope, element, attrs) {
+        scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+          return o.markets.indexOf(scope.$parent.selected.market) > -1;
+        });
+        scope.$parent.$watch('scope.tradeTypes', function (_newValue, _oldValue) {
+          var categories = Object.keys(_.groupBy(_newValue, 'category'));
+          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+            return categories.indexOf(o.value);
+          });
+        });
+        scope.$parent.$watch('selected', function (value) {
+          if (value.tradeType) {
+            var tradeTypeObj = _.find(config.tradeTypes, [
+                'value',
+                value.tradeType
+              ]);
+            scope.updateTradeType(tradeTypeObj.category);
+          }
+          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
+            return o.markets.indexOf(scope.$parent.selected.market) > -1;
+          });
+        }, true);
+        scope.updateTradeType = function (_tradeCategory) {
+          var tradeType = _.find(config.tradeTypes, [
+              'category',
+              _tradeCategory
+            ]);
+          scope.$parent.selected.tradeType = tradeType.value;
+          scope.$parent.selected.tradeCategory = _tradeCategory;
+          scope.$parent.displayDigits = false;
+          scope.$parent.hideDigit = '';
+          if (tradeType.digits === true) {
+            if (_tradeCategory == 'OVER/UNDER') {
+              if (scope.$parent.selected.digit == 9) {
+                scope.$parent.selected.tradeType = 'DIGITUNDER';
+              } else {
+                scope.$parent.selected.tradeType = 'DIGITOVER';
+              }
+            }
+            scope.$parent.displayDigits = true;
+            // Set the digit and barrier for the first time that the digits are enabled
+            if (!scope.$parent.selected.barrier && !scope.$parent.selected.digit) {
+              scope.$parent.selected.digit = 0;
+            }
+          }
+        };
+        scope.getNgDisabled = function () {
+          if (attrs['ngDisabled']) {
+            return scope.$eval(attrs['ngDisabled']);
+          }
+          return false;
+        };
+        scope.$parent.$watch(function () {
+          var digitsVisible = angular.element(document).find('digits-option').hasClass('ng-hide');
+          return digitsVisible;
+        }, function () {
+          $ionicScrollDelegate.resize();
+        }, false);
+      }
+    };
+  }
+]);
+angular.module('binary').directive('realityCheck', [
+  'accountService',
+  'languageService',
+  'websocketService',
+  '$state',
+  '$ionicPopup',
+  '$compile',
+  '$ionicLoading',
+  function (accountService, languageService, websocketService, $state, $ionicPopup, $compile, $ionicLoading) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/reality-check/reality-check.template.html',
+      scope: { message: '=' },
+      controller: 'RealityCheckController',
+      controllerAs: 'reality',
+      bindToController: true
     };
   }
 ]);
@@ -3646,12 +4290,11 @@ angular.module('binary').directive('longCode', [
  * @copyright Binary Ltd
  */
 angular.module('binary').directive('payout', [
-  'websocketService',
   'marketService',
   'proposalService',
   'delayService',
   'appStateService',
-  function (websocketService, marketService, proposalService, delayService, appStateService) {
+  function (marketService, proposalService, delayService, appStateService) {
     return {
       restrict: 'E',
       templateUrl: 'templates/components/trades/payout.template.html',
@@ -3662,42 +4305,33 @@ angular.module('binary').directive('payout', [
         if (scope.amount == 0) {
           scope.amount = 5;
           updateProposal();
+        } else {
+          proposalService.send();
         }
         scope.proposalError = null;
-        proposalService.send();
         scope.$on('$destroy', function () {
           delayService.remove('updateProposal');
         });
         scope.$parent.$watch('proposalRecieved', function (_proposal) {
           if (_proposal) {
-            var netProfit = parseFloat(_proposal.payout) - parseFloat(_proposal.ask_price);
-            _proposal.netProfit = isNaN(netProfit) || netProfit < 0 ? '0' : netProfit.toFixed(2);
-            scope.proposal = _proposal;
-            scope.proposalError = null;
-            if (scope.$parent && scope.$parent.purchaseFrom) {
-              scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', true);
-            }
-            if (!scope.$$phase) {
-              scope.$apply();
-            }
-          }
-        });
-        scope.$on('purchase:error', function (e, error) {
-          if (scope.$parent.purchaseFrom) {
-            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
+            scope.$applyAsync(function () {
+              var netProfit = parseFloat(_proposal.payout) - parseFloat(_proposal.ask_price);
+              _proposal.netProfit = isNaN(netProfit) || netProfit < 0 ? '0' : netProfit.toFixed(2);
+              scope.proposal = _proposal;
+              scope.proposalError = null;
+              if (scope.$parent && scope.$parent.purchaseFrom) {
+                scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', true);
+              }
+            });
           }
         });
         scope.$on('proposal:error', function (e, error) {
-          scope.proposalError = error;
-          if (scope.$parent.purchaseFrom) {
-            scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            scope.proposalError = error;
+            if (scope.$parent.purchaseFrom) {
+              scope.$parent.purchaseFrom.amount.$setValidity('InvalidAmount', false);
+            }
+          });
         });
         function roundNumber(_newAmount, _oldAmount) {
           var parsed = parseFloat(_newAmount, 10);
@@ -3717,17 +4351,14 @@ angular.module('binary').directive('payout', [
         }
         ;
         scope.delayedUpdateProposal = function delayedUpdateProposal() {
-          appStateService.waitForProposal = true;
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
+          scope.$applyAsync(function () {
+            appStateService.waitForProposal = true;
+          });
           delayService.update('updateProposal', updateProposal, minimumUpdateDelay);
         };
         scope.updateAmount = function (_form) {
           scope.delayedUpdateProposal();
         };
-        // TODO: limit to the account balance for stake
-        // TODO: figure out how to handle it for payout
         scope.addAmount = function () {
           var amount = parseFloat(scope.amount);
           if (isNaN(amount)) {
@@ -3755,10 +4386,8 @@ angular.module('binary').directive('payout', [
  */
 angular.module('binary').directive('purchase', [
   'websocketService',
-  'alertService',
-  '$rootScope',
   'appStateService',
-  function (websocketService, alertService, $rootScope, appStateService) {
+  function (websocketService, appStateService) {
     return {
       restrict: 'E',
       templateUrl: 'templates/components/trades/purchase.template.html',
@@ -3917,357 +4546,6 @@ angular.module('binary').directive('tradeType', [
   }
 ]);
 /**
- * @name digitsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('digitsOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/digits.template.html',
-      link: function (scope, element, attrs) {
-        scope.attrs = attrs;
-        var hideDigit = function hideDigit(hideDigit) {
-          var digitIndex = scope.digits.indexOf(hideDigit);
-          if (digitIndex < 0) {
-            return;
-          }
-          scope.digits.splice(digitIndex, 1);
-          if (scope.$parent.selected.digit == hideDigit) {
-            scope.$parent.selected.digit = scope.digits[0];
-          }
-        };
-        scope.digits = [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9
-        ];
-        scope.$parent.selected.digit = marketService.getDefault.digit();
-        scope.$parent.$watch('hideDigit', function (value) {
-          if (scope.$parent != null) {
-            scope.digits = [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              8,
-              9
-            ];
-            scope.$parent.selected.digit = marketService.getDefault.digit();
-            if (!isNaN(value)) {
-              hideDigit(parseInt(value));
-            }
-          }
-        });
-        scope.updateDigit = function (_digit) {
-          scope.$parent.selected.digit = _digit;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name marketsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('marketsOption', [
-  'marketService',
-  'proposalService',
-  'alertService',
-  function (marketService, proposalService, alertService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/markets.template.html',
-      link: function (scope, element, attrs) {
-        scope.showSymbolWarning = true;
-        /**
-				 * Get all symbols for the selected market
-				 * @param  {String} _market Selected Market
-				 */
-        var updateSymbols = function (_market) {
-          scope.symbols = marketService.getAllSymbolsForAMarket(_market);
-          //marketService.getActiveTickSymbolsForMarket(_market);
-          if (scope.symbols.length > 0) {
-            scope.$parent.selected.symbol = marketService.getDefault.symbol(_market, scope.symbols);
-            marketService.getSymbolDetails(scope.$parent.selected.symbol);
-          } else {
-            // If there is not any symbol that has tick support, a empty array broadcast for symbol
-            scope.$broadcast('symbol', []);
-            if (scope.showSymbolWarning) {
-              scope.showSymbolWarning = false;
-              alertService.displaySymbolWarning('alert.no_underlying');
-              scope.$watch(function () {
-                return scope.$parent.selected.market;
-              }, function (newVal, oldVal) {
-                if (newVal !== oldVal)
-                  scope.showSymbolWarning = true;
-              });
-            }
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        };
-        /**
-				 * init function - to run on the page load
-				 * Get forex and random markets
-				 * Set the default/selected market
-				 */
-        var init = function () {
-          if (marketService.hasActiveSymobols() && marketService.hasAssetIndex()) {
-            try {
-              marketService.fixOrder();
-              var markets = marketService.getActiveMarkets();
-              scope.market = { forex: markets.indexOf('forex') !== -1 ? true : false };
-              //FIXME Should be change after changing Random to Volitality-Indices permenantly
-              if (markets.indexOf('volidx') >= 0) {
-                scope.market.volidx = true;
-              } else if (markets.indexOf('random') >= 0) {
-                scope.market.random = true;
-              }
-              scope.$parent.selected.market = marketService.getDefault.market(scope.market);
-              updateSymbols(scope.$parent.selected.market);
-              if (!scope.$$phase) {
-                scope.$apply();
-              }
-            } catch (error) {
-              console.log(error);
-            }
-          }
-        };
-        init();
-        scope.$on('symbols:updated', function (e, _symbol) {
-          init();
-        });
-        scope.$on('assetIndex:updated', function (e, _symbol) {
-          //updateSymbols(scope.$parent.selected.market);
-          init();
-        });
-        scope.updateMarket = function (_market) {
-          // To disable "Let's trade" button until all data is loaded
-          scope.setDataLoaded(false);
-          scope.$parent.selected.market = _market;
-          updateSymbols(scope.$parent.selected.market);
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-        scope.isRandom = function () {
-          var markets = marketService.getActiveMarkets();
-          return markets.indexOf('random') > -1;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name payoutStakeOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('payoutStakeOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/payout-stake.template.html',
-      link: function (scope, element, attrs) {
-        scope.$parent.selected.basis = marketService.getDefault.basis();
-        scope.updateBasis = function (_basis) {
-          scope.$parent.selected.basis = _basis;
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name symbolsOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('symbolsOption', [
-  'marketService',
-  'alertService',
-  'config',
-  function (marketService, alertService, config) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/symbols.template.html',
-      link: function (scope, element, attrs) {
-        scope.tradeTypes = config.tradeTypes;
-        scope.$on('symbol', function (e, _symbol) {
-          if (!_.isEmpty(_symbol)) {
-            scope.tradeTypes = marketService.getTradeTypes(_symbol);
-            scope.$parent.selected.tradeType = marketService.getDefault.tradeType(scope.tradeTypes);
-            // Assigning "true" to isDataLoaded to enable "Let's trade" button
-            scope.setDataLoaded(true);
-          } else {
-            // Assigning "false" to isDataLoaded to disable "Let's trade" button
-            scope.setDataLoaded(true, false);
-          }
-          if (!scope.$$phase) {
-            scope.$apply();
-          }
-        });
-        scope.updateSymbol = function (_selectedSymbol) {
-          scope.$parent.selected.symbol = _selectedSymbol;
-          marketService.getSymbolDetails(scope.$parent.selected.symbol);
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name ticksOption
- * @author Massih Hazrati
- * @contributors []
- * @since 11/10/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('ticksOption', [
-  'marketService',
-  function (marketService) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/ticks.template.html',
-      link: function (scope, element, attrs) {
-        scope.ticks = [
-          5,
-          6,
-          7,
-          8,
-          9,
-          10
-        ];
-        scope.$parent.selected.tick = marketService.getDefault.tick();
-        scope.updateTick = function (_tick) {
-          scope.$parent.selected.tick = _tick;
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-      }
-    };
-  }
-]);
-/**
- * @name tradeCategory
- * @author Morteza Tavanarad
- * @contributors []
- * @since 02/12/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('tradeCategory', [
-  'marketService',
-  'config',
-  '$ionicScrollDelegate',
-  function (marketService, config, $ionicScrollDelegate) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/options/trade-category.template.html',
-      link: function (scope, element, attrs) {
-        scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-          return o.markets.indexOf(scope.$parent.selected.market) > -1;
-        });
-        scope.$parent.$watch('scope.tradeTypes', function (_newValue, _oldValue) {
-          var categories = Object.keys(_.groupBy(_newValue, 'category'));
-          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-            return categories.indexOf(o.value);
-          });
-        });
-        scope.$parent.$watch('selected', function (value) {
-          if (value.tradeType) {
-            var tradeTypeObj = _.find(config.tradeTypes, [
-                'value',
-                value.tradeType
-              ]);
-            scope.updateTradeType(tradeTypeObj.category);
-          }
-          scope.tradeCategories = _.filter(config.tradeCategories, function (o) {
-            return o.markets.indexOf(scope.$parent.selected.market) > -1;
-          });
-        }, true);
-        scope.updateTradeType = function (_tradeCategory) {
-          var tradeType = _.find(config.tradeTypes, [
-              'category',
-              _tradeCategory
-            ]);
-          scope.$parent.selected.tradeType = tradeType.value;
-          scope.$parent.selected.tradeCategory = _tradeCategory;
-          scope.$parent.displayDigits = false;
-          scope.$parent.hideDigit = '';
-          if (tradeType.digits === true) {
-            if (_tradeCategory == 'OVER/UNDER') {
-              if (scope.$parent.selected.digit == 9) {
-                scope.$parent.selected.tradeType = 'DIGITUNDER';
-              } else {
-                scope.$parent.selected.tradeType = 'DIGITOVER';
-              }
-            }
-            scope.$parent.displayDigits = true;
-            // Set the digit and barrier for the first time that the digits are enabled
-            if (!scope.$parent.selected.barrier && !scope.$parent.selected.digit) {
-              scope.$parent.selected.digit = 0;
-            }
-          }
-        };
-        scope.getNgDisabled = function () {
-          if (attrs['ngDisabled']) {
-            return scope.$eval(attrs['ngDisabled']);
-          }
-          return false;
-        };
-        scope.$parent.$watch(function () {
-          var digitsVisible = angular.element(document).find('digits-option').hasClass('ng-hide');
-          return digitsVisible;
-        }, function () {
-          $ionicScrollDelegate.resize();
-        }, false);
-      }
-    };
-  }
-]);
-/**
  * @name websocketService
  * @author Morteza Tavanarad
  * @contributors []
@@ -4285,19 +4563,21 @@ angular.module('binary').directive('appVersion', [
       templateUrl: 'templates/components/utils/app-version.template.html',
       link: function (scope) {
         $ionicPlatform.ready(function () {
-          if (window.cordova) {
-            cordova.getAppVersion(function (version) {
-              scope.appVersion = version;
-            }, function (err) {
-              console.log(err);
-            });
-          } else {
-            appVersionService.getAppVersion().success(function (data) {
-              scope.appVersion = data.version;
-            }).error(function (data) {
-              scope.appVersion = '0.0.0';
-            });
-          }
+          scope.$applyAsync(function () {
+            if (window.cordova) {
+              cordova.getAppVersion(function (version) {
+                scope.appVersion = version;
+              }, function (err) {
+                console.log(err);
+              });
+            } else {
+              appVersionService.getAppVersion().success(function (data) {
+                scope.appVersion = data.version;
+              }).error(function (data) {
+                scope.appVersion = '0.0.0';
+              });
+            }
+          });
         });
       }
     };
@@ -4318,16 +4598,14 @@ angular.module('binary').directive('connectionStatus', function () {
     link: function (scope, element, attrs, ngModel) {
       scope.isConnectionError = false;
       scope.$on('connection:error', function () {
-        scope.isConnectionError = true;
-        if (!scope.$$phase) {
-          scope.$apply();
-        }
+        scope.$applyAsync(function () {
+          scope.isConnectionError = true;
+        });
       });
       scope.$on('connection:ready', function () {
-        scope.isConnectionError = false;
-        if (!scope.$$phase) {
-          scope.$apply();
-        }
+        scope.$applyAsync(function () {
+          scope.isConnectionError = false;
+        });
       });
     }
   };
@@ -4364,7 +4642,10 @@ angular.module('binary').directive('onLongPress', [
       link: function (scope, elm, attrs) {
         var timer = 0;
         var interval = attrs.interval ? Number(attrs.interval) : 300;
+        scope.longPress = false;
         var startPress = function (evt) {
+          evt.stopPropagation();
+          evt.preventDefault();
           // Locally scoped variable that will keep track of the long press
           scope.longPress = true;
           if (attrs.repetitive && attrs.repetitive === 'true') {
@@ -4408,6 +4689,33 @@ angular.module('binary').directive('onLongPress', [
         elm.bind('touchend', endPress);
         elm.bind('mousedown', startPress);
         elm.bind('mouseup', endPress);
+      }
+    };
+  }
+]);
+/**
+ * @name ping directive
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 08/02/2016
+ * @copyright Binary Ltd
+ * Directive to ping server for keeping alive the connection
+ */
+angular.module('binary').directive('ping', [
+  'websocketService',
+  '$timeout',
+  function (websocketService, $timeout) {
+    return {
+      restrict: 'E',
+      link: function (scope) {
+        function init() {
+          ping();
+        }
+        function ping() {
+          websocketService.sendRequestFor.ping();
+          $timeout(ping, 60000);
+        }
+        init();
       }
     };
   }
