@@ -83,6 +83,271 @@ angular.module('binary').run([
   }
 ]);
 /**
+ * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
+ *
+ * This patch works around iOS9 UIWebView regression that causes infinite digest
+ * errors in Angular.
+ *
+ * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
+ * have the workaround baked in.
+ *
+ * To apply this patch load/bundle this file with your application and add a
+ * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
+ *
+ * For example:
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute'])`
+ * ```
+ *
+ * becomes
+ *
+ * ```
+ * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
+ * ```
+ *
+ *
+ * More info:
+ * - https://openradar.appspot.com/22186109
+ * - https://github.com/angular/angular.js/issues/12241
+ * - https://github.com/driftyco/ionic/issues/4082
+ *
+ *
+ * @license AngularJS
+ * (c) 2010-2015 Google, Inc. http://angularjs.org
+ * License: MIT
+ */
+angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
+  '$provide',
+  function ($provide) {
+    'use strict';
+    $provide.decorator('$browser', [
+      '$delegate',
+      '$window',
+      function ($delegate, $window) {
+        if (isIOS9UIWebView($window.navigator.userAgent)) {
+          return applyIOS9Shim($delegate);
+        }
+        return $delegate;
+        function isIOS9UIWebView(userAgent) {
+          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
+        }
+        function applyIOS9Shim(browser) {
+          var pendingLocationUrl = null;
+          var originalUrlFn = browser.url;
+          browser.url = function () {
+            if (arguments.length) {
+              pendingLocationUrl = arguments[0];
+              return originalUrlFn.apply(browser, arguments);
+            }
+            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
+          };
+          window.addEventListener('popstate', clearPendingLocationUrl, false);
+          window.addEventListener('hashchange', clearPendingLocationUrl, false);
+          function clearPendingLocationUrl() {
+            pendingLocationUrl = null;
+          }
+          return browser;
+        }
+      }
+    ]);
+  }
+]);
+/**
+ * @contributors []
+ * @since 10/25/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').constant('config', {
+  'app_id': '10',
+  'wsUrl': 'wss://ws.binaryws.com/websockets/v3',
+  'oauthUrl': 'https://oauth.binary.com/oauth2/authorize',
+  'tradeCategories': [
+    {
+      name: 'up_down',
+      markets: [
+        'forex',
+        'volidx',
+        'random'
+      ],
+      value: 'UP/DOWN'
+    },
+    {
+      name: 'digit_matches_differs',
+      value: 'MATCH/DIFF',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    },
+    {
+      name: 'digit_even_odd',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      value: 'EVEN/ODD'
+    },
+    {
+      name: 'digit_over_under',
+      value: 'OVER/UNDER',
+      markets: [
+        'volidx',
+        'random'
+      ],
+      digits: true
+    },
+    {
+      name: 'asians',
+      value: 'Asians',
+      markets: [
+        'volidx',
+        'random'
+      ]
+    }
+  ],
+  'tradeTypes': [
+    {
+      name: 'Up',
+      value: 'CALL',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Down',
+      value: 'PUT',
+      digits: false,
+      category: 'UP/DOWN'
+    },
+    {
+      name: 'Asians Up',
+      value: 'ASIANU',
+      digits: false,
+      category: 'Asians'
+    },
+    {
+      name: 'Asians Down',
+      value: 'ASIAND',
+      digits: false,
+      category: 'Asians'
+    },
+    {
+      name: 'Digit Match',
+      value: 'DIGITMATCH',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Differs',
+      value: 'DIGITDIFF',
+      digits: true,
+      category: 'MATCH/DIFF'
+    },
+    {
+      name: 'Digit Even',
+      value: 'DIGITEVEN',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Odd',
+      value: 'DIGITODD',
+      category: 'EVEN/ODD'
+    },
+    {
+      name: 'Digit Over',
+      value: 'DIGITOVER',
+      digits: true,
+      category: 'OVER/UNDER'
+    },
+    {
+      name: 'Digit Under',
+      value: 'DIGITUNDER',
+      digits: true,
+      category: 'OVER/UNDER'
+    }
+  ],
+  'language': 'en',
+  'assetIndexes': {
+    symbol: 0,
+    displayName: 1,
+    contracts: 2,
+    contractName: 0,
+    contractDisplayName: 1,
+    contractFrom: 2,
+    contractTo: 3
+  }
+});
+/**
+ * @name states.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$stateProvider',
+  '$urlRouterProvider',
+  '$ionicConfigProvider',
+  function ($stateProvider, $urlRouterProvider, $ionicConfigProvider) {
+    $ionicConfigProvider.views.swipeBackEnabled(false);
+    $stateProvider.state('home', {
+      url: '/home',
+      cache: false,
+      templateUrl: 'templates/pages/home.html',
+      controller: 'HomeController'
+    }).state('signin', {
+      url: '/sign-in',
+      cache: false,
+      templateUrl: 'templates/pages/sign-in.html',
+      controller: 'SignInController'
+    }).state('help', {
+      url: '/help',
+      templateUrl: 'templates/pages/help.html',
+      controller: 'HelpController'
+    }).state('trade', {
+      url: '/trade',
+      cache: false,
+      templateUrl: 'templates/pages/trade.html',
+      controller: 'TradeController'
+    }).state('options', {
+      url: '/options',
+      cache: false,
+      templateUrl: 'templates/pages/options.html',
+      controller: 'OptionsController'
+    }).state('accounts', {
+      url: '/accounts',
+      cache: false,
+      templateUrl: 'templates/pages/accounts.html',
+      controller: 'AccountsController'
+    }).state('redirect', {
+      url: '/redirect',
+      cache: false,
+      templateUrl: 'templates/pages/oauth-redirect.template.html',
+      controller: 'OAuthRedirect'
+    });
+    $urlRouterProvider.otherwise('/home');
+  }
+]);
+/**
+ * @name translation.config
+ * @author Massih Hazrati
+ * @contributors []
+ * @since 11/4/2015
+ * @copyright Binary Ltd
+ */
+angular.module('binary').config([
+  '$translateProvider',
+  function ($translateProvider) {
+    var language = localStorage['language'] || 'en';
+    $translateProvider.preferredLanguage(language);
+    $translateProvider.useStaticFilesLoader({
+      prefix: 'i18n/',
+      suffix: '.json'
+    });
+  }
+]);
+/**
  * @name AccountController
  * @author Massih Hazrati
  * @contributors []
@@ -3103,271 +3368,6 @@ angular.module('binary').factory('websocketService', [
   }
 ]);
 /**
- * ==================  angular-ios9-uiwebview.patch.js v1.1.1 ==================
- *
- * This patch works around iOS9 UIWebView regression that causes infinite digest
- * errors in Angular.
- *
- * The patch can be applied to Angular 1.2.0 – 1.4.5. Newer versions of Angular
- * have the workaround baked in.
- *
- * To apply this patch load/bundle this file with your application and add a
- * dependency on the "ngIOS9UIWebViewPatch" module to your main app module.
- *
- * For example:
- *
- * ```
- * angular.module('myApp', ['ngRoute'])`
- * ```
- *
- * becomes
- *
- * ```
- * angular.module('myApp', ['ngRoute', 'ngIOS9UIWebViewPatch'])
- * ```
- *
- *
- * More info:
- * - https://openradar.appspot.com/22186109
- * - https://github.com/angular/angular.js/issues/12241
- * - https://github.com/driftyco/ionic/issues/4082
- *
- *
- * @license AngularJS
- * (c) 2010-2015 Google, Inc. http://angularjs.org
- * License: MIT
- */
-angular.module('ngIOS9UIWebViewPatch', ['ng']).config([
-  '$provide',
-  function ($provide) {
-    'use strict';
-    $provide.decorator('$browser', [
-      '$delegate',
-      '$window',
-      function ($delegate, $window) {
-        if (isIOS9UIWebView($window.navigator.userAgent)) {
-          return applyIOS9Shim($delegate);
-        }
-        return $delegate;
-        function isIOS9UIWebView(userAgent) {
-          return /(iPhone|iPad|iPod).* OS 9_\d/.test(userAgent) && !/Version\/9\./.test(userAgent);
-        }
-        function applyIOS9Shim(browser) {
-          var pendingLocationUrl = null;
-          var originalUrlFn = browser.url;
-          browser.url = function () {
-            if (arguments.length) {
-              pendingLocationUrl = arguments[0];
-              return originalUrlFn.apply(browser, arguments);
-            }
-            return pendingLocationUrl || originalUrlFn.apply(browser, arguments);
-          };
-          window.addEventListener('popstate', clearPendingLocationUrl, false);
-          window.addEventListener('hashchange', clearPendingLocationUrl, false);
-          function clearPendingLocationUrl() {
-            pendingLocationUrl = null;
-          }
-          return browser;
-        }
-      }
-    ]);
-  }
-]);
-/**
- * @contributors []
- * @since 10/25/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').constant('config', {
-  'app_id': '10',
-  'wsUrl': 'wss://ws.binaryws.com/websockets/v3',
-  'oauthUrl': 'https://oauth.binary.com/oauth2/authorize',
-  'tradeCategories': [
-    {
-      name: 'up_down',
-      markets: [
-        'forex',
-        'volidx',
-        'random'
-      ],
-      value: 'UP/DOWN'
-    },
-    {
-      name: 'digit_matches_differs',
-      value: 'MATCH/DIFF',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    },
-    {
-      name: 'digit_even_odd',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      value: 'EVEN/ODD'
-    },
-    {
-      name: 'digit_over_under',
-      value: 'OVER/UNDER',
-      markets: [
-        'volidx',
-        'random'
-      ],
-      digits: true
-    },
-    {
-      name: 'asians',
-      value: 'Asians',
-      markets: [
-        'volidx',
-        'random'
-      ]
-    }
-  ],
-  'tradeTypes': [
-    {
-      name: 'Up',
-      value: 'CALL',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Down',
-      value: 'PUT',
-      digits: false,
-      category: 'UP/DOWN'
-    },
-    {
-      name: 'Asians Up',
-      value: 'ASIANU',
-      digits: false,
-      category: 'Asians'
-    },
-    {
-      name: 'Asians Down',
-      value: 'ASIAND',
-      digits: false,
-      category: 'Asians'
-    },
-    {
-      name: 'Digit Match',
-      value: 'DIGITMATCH',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Differs',
-      value: 'DIGITDIFF',
-      digits: true,
-      category: 'MATCH/DIFF'
-    },
-    {
-      name: 'Digit Even',
-      value: 'DIGITEVEN',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Odd',
-      value: 'DIGITODD',
-      category: 'EVEN/ODD'
-    },
-    {
-      name: 'Digit Over',
-      value: 'DIGITOVER',
-      digits: true,
-      category: 'OVER/UNDER'
-    },
-    {
-      name: 'Digit Under',
-      value: 'DIGITUNDER',
-      digits: true,
-      category: 'OVER/UNDER'
-    }
-  ],
-  'language': 'en',
-  'assetIndexes': {
-    symbol: 0,
-    displayName: 1,
-    contracts: 2,
-    contractName: 0,
-    contractDisplayName: 1,
-    contractFrom: 2,
-    contractTo: 3
-  }
-});
-/**
- * @name states.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$stateProvider',
-  '$urlRouterProvider',
-  '$ionicConfigProvider',
-  function ($stateProvider, $urlRouterProvider, $ionicConfigProvider) {
-    $ionicConfigProvider.views.swipeBackEnabled(false);
-    $stateProvider.state('home', {
-      url: '/home',
-      cache: false,
-      templateUrl: 'templates/pages/home.html',
-      controller: 'HomeController'
-    }).state('signin', {
-      url: '/sign-in',
-      cache: false,
-      templateUrl: 'templates/pages/sign-in.html',
-      controller: 'SignInController'
-    }).state('help', {
-      url: '/help',
-      templateUrl: 'templates/pages/help.html',
-      controller: 'HelpController'
-    }).state('trade', {
-      url: '/trade',
-      cache: false,
-      templateUrl: 'templates/pages/trade.html',
-      controller: 'TradeController'
-    }).state('options', {
-      url: '/options',
-      cache: false,
-      templateUrl: 'templates/pages/options.html',
-      controller: 'OptionsController'
-    }).state('accounts', {
-      url: '/accounts',
-      cache: false,
-      templateUrl: 'templates/pages/accounts.html',
-      controller: 'AccountsController'
-    }).state('redirect', {
-      url: '/redirect',
-      cache: false,
-      templateUrl: 'templates/pages/oauth-redirect.template.html',
-      controller: 'OAuthRedirect'
-    });
-    $urlRouterProvider.otherwise('/home');
-  }
-]);
-/**
- * @name translation.config
- * @author Massih Hazrati
- * @contributors []
- * @since 11/4/2015
- * @copyright Binary Ltd
- */
-angular.module('binary').config([
-  '$translateProvider',
-  function ($translateProvider) {
-    var language = localStorage['language'] || 'en';
-    $translateProvider.preferredLanguage(language);
-    $translateProvider.useStaticFilesLoader({
-      prefix: 'i18n/',
-      suffix: '.json'
-    });
-  }
-]);
-/**
  * @name changeAccount
  * @author Massih Hazrati
  * @contributors []
@@ -4220,25 +4220,6 @@ angular.module('binary').directive('tradeCategory', [
     };
   }
 ]);
-angular.module('binary').directive('realityCheck', [
-  'accountService',
-  'languageService',
-  'websocketService',
-  '$state',
-  '$ionicPopup',
-  '$compile',
-  '$ionicLoading',
-  function (accountService, languageService, websocketService, $state, $ionicPopup, $compile, $ionicLoading) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/reality-check/reality-check.template.html',
-      scope: { message: '=' },
-      controller: 'RealityCheckController',
-      controllerAs: 'reality',
-      bindToController: true
-    };
-  }
-]);
 /**
  * @name contractSummary
  * @author Massih Hazrati
@@ -4543,6 +4524,25 @@ angular.module('binary').directive('tradeType', [
         };
         init();
       }
+    };
+  }
+]);
+angular.module('binary').directive('realityCheck', [
+  'accountService',
+  'languageService',
+  'websocketService',
+  '$state',
+  '$ionicPopup',
+  '$compile',
+  '$ionicLoading',
+  function (accountService, languageService, websocketService, $state, $ionicPopup, $compile, $ionicLoading) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/reality-check/reality-check.template.html',
+      scope: { message: '=' },
+      controller: 'RealityCheckController',
+      controllerAs: 'reality',
+      bindToController: true
     };
   }
 ]);
