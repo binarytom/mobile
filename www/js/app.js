@@ -7,7 +7,7 @@
  * The main module of binary app
  */
 
-angular.module('binary', ['ionic', 'pascalprecht.translate', 'hmTouchEvents', 'ngIOS9UIWebViewPatch']);
+angular.module('binary', ['ionic', 'pascalprecht.translate', 'hmTouchEvents', 'ngIOS9UIWebViewPatch', 'ngMessages']);
 
 
 angular
@@ -44,6 +44,7 @@ angular
                       if(res == 1){
                           sessionStorage.removeItem('start');
                           sessionStorage.removeItem('_interval');
+                          appStateService.isCheckedAccountType = false;
                           navigator.app.exitApp();
                       }
                   });
