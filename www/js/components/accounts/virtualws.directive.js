@@ -32,7 +32,7 @@ angular
 						if (!appStateService.hasGetResidence) {
 							scope.residenceList = residence_list;
 							appStateService.hasGetResidence = true;
-							scope.data.residence = scope.residenceList[0].text;
+							// scope.data.residence = scope.residenceList[0].text;
 						}
 					});
 					// scope.$watch('residenceList', function() {
@@ -52,7 +52,6 @@ angular
 					};
 
 					scope.createVirtualAccount = function() {
-
 						var verificationCode = scope.data.verificationCode;
 						var clientPassword = scope.data.clientPassword;
 						var residence = scope.data.residence;
@@ -61,13 +60,19 @@ angular
 					scope.$on('new_account_virtual', function(e, new_account_virtual) {
 						if (!appStateService.isLoggedin) {
 							var _token = new_account_virtual.oauth_token;
-							// accountService.validate(token);
 							websocketService.authenticate(_token)
 						}
 
 					});
+					scope.$on('new_account_virtual:error', function(e, error){
+				 	if(error){
+					 			if((error.hasOwnProperty('details') && error.details.hasOwnProperty('verification_code')) || (error.hasOwnProperty('code') && error.code == "InvalidToken")){
+									alertService.displayError(error.message);
+							}
 
+					 	}
 
+					 });
 				}
 			};
 		}
