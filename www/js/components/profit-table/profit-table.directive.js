@@ -23,22 +23,33 @@ angular
 					scope.customDateEnabled = false;
 					scope.transactions = [];
 					scope.noTransaction = false;
+					// function of sending profti table request through websocket
+					scope.sendProfitTableRequest = function() {
+						var params = {
+							"limit": scope.itemsFirstCall,
+							"offset": scope.currentPage * scope.itemsPerPage,
+							"description": 1,
+							"date_from": scope.dateFrom,
+							"date_to": scope.dateTo
+						}
+						websocketService.sendRequestFor.profitTable(params);
+					}
+
+					// check if user is loggedin for preventing errors on page refresh
 					// send request for profit table for the first time
-					scope.init = function() {
+					scope.firstProfitTableRequest = function() {
 						if (appStateService.isLoggedin) {
 							if (!scope.profitTableSet) {
-								var params = {
-									"limit": scope.itemsFirstCall,
-									"description": 1
-								}
-								websocketService.sendRequestFor.profitTable(params);
+								scope.currentPage = 0;
+								scope.dateFrom = "";
+								scope.dateTo = "";
+								scope.sendProfitTableRequest();
 							}
 						} else {
-							$timeout(scope.init, 500);
+							$timeout(scope.firstProfitTableRequest, 500);
 						}
 					}
-					scope.init();
-
+					scope.firstProfitTableRequest();
 
 					// previous button
 					scope.prevPage = function() {
@@ -59,20 +70,17 @@ angular
 					// watch currentPage for changing the pages via next or prev button
 					// whenever changed send request for new data
 					scope.$watch("currentPage", function(newValue, oldValue) {
-						var params = {
-							"description": 1,
-							"limit": scope.itemsFirstCall,
-							"offset": newValue * scope.itemsPerPage
-						}
-						websocketService.sendRequestFor.profitTable(params);
+						scope.currentPage = newValue;
+						scope.sendProfitTableRequest();
 					});
+
 					scope.$watch("dateType", function() {
 						scope.currentPage = 0;
 						scope.transactions = [];
-
 						scope.$applyAsync(function() {
 							if (scope.dateType == 'customDate') {
 								scope.customDateEnabled = true;
+								scope.setCustomDate();
 							} else {
 								scope.customDateEnabled = false;
 							}
@@ -83,39 +91,43 @@ angular
 							scope.dateTo = "";
 						} else if (scope.dateType == 'monthAgo') {
 							var now = new Date();
-							var current = now.getTime();
+							var currentEpoch = now.getTime();
+							var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+							var midnightEpoch = new Date(today).getTime();
+							var diff = currentEpoch - midnightEpoch;
 							var dayBeforeDate = now.setDate(now.getDate() - 30);
-							scope.dateFrom = dayBeforeDate;
+							scope.dateFrom = Math.ceil((dayBeforeDate - diff) / 1000);
 							scope.dateTo = "";
 						} else if (scope.dateType == 'sevenDayAgo') {
 							var now = new Date();
-							var current = now.getTime();
+							var currentEpoch = now.getTime();
+							var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+							var midnightEpoch = new Date(today).getTime();
+							var diff = currentEpoch - midnightEpoch;
 							var dayBeforeDate = now.setDate(now.getDate() - 7);
-							scope.dateFrom = dayBeforeDate;
+							scope.dateFrom = Math.ceil((dayBeforeDate - diff) / 1000);
 							scope.dateTo = "";
 						} else if (scope.dateType == 'threeDayAgo') {
 							var now = new Date();
-							var current = now.getTime();
+							var currentEpoch = now.getTime();
+							var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+							var midnightEpoch = new Date(today).getTime();
+							var diff = currentEpoch - midnightEpoch;
 							var dayBeforeDate = now.setDate(now.getDate() - 3);
-							scope.dateFrom = dayBeforeDate;
+							scope.dateFrom = Math.ceil((dayBeforeDate - diff) / 1000);
 							scope.dateTo = "";
 						} else if (scope.dateType == 'oneDayAgo') {
 							var now = new Date();
-							var current = now.getTime();
+							var currentEpoch = now.getTime();
+							var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+							var midnightEpoch = new Date(today).getTime();
+							var diff = currentEpoch - midnightEpoch;
 							var dayBeforeDate = now.setDate(now.getDate() - 1);
-							scope.dateFrom = dayBeforeDate;
+							scope.dateFrom = Math.ceil((dayBeforeDate - diff) / 1000);
 							scope.dateTo = "";
 						}
 
-						var params = {
-							"description": 1,
-							"limit": scope.itemsFirstCall,
-							"offset": scope.currentPage,
-							"date_from": scope.dateFrom,
-							"date_to": scope.dateTo
-						}
-						websocketService.sendRequestFor.profitTable(params);
-
+						scope.sendProfitTableRequest();
 					});
 
 					scope.setCustomDate = function() {
@@ -128,14 +140,7 @@ angular
 						}
 						scope.dateFrom = startDate || "";
 						scope.dateTo = finishDate || "";
-						var params = {
-							"description": 1,
-							"limit": scope.itemsFirstCall,
-							"offset": scope.currentPage,
-							"date_from": scope.dateFrom,
-							"date_to": scope.dateTo
-						}
-						websocketService.sendRequestFor.profitTable(params);
+						scope.sendProfitTableRequest();
 					}
 
 					// do this on response of any profitTable request
