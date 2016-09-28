@@ -892,6 +892,8 @@ angular.module('binary').controller('TradeController', [
     $scope.$on('proposal', function (e, response) {
       $scope.$applyAsync(function () {
         $scope.proposalRecieved = response;
+        var netProfit = parseFloat($scope.proposalRecieved.payout) - parseFloat($scope.proposalRecieved.ask_price);
+        $scope.proposalRecieved.netProfit = isNaN(netProfit) || netProfit < 0 ? '0' : netProfit.toFixed(2);
         appStateService.waitForProposal = false;
       });
     });
@@ -3765,29 +3767,6 @@ angular.module('binary').directive('signin', [
   }
 ]);
 /**
- * @name languageList Directive
- * @author Morteza Tavanarad
- * @contributors []
- * @since 04/10/2016
- * @copyright Binary Ltd
- */
-angular.module('binary').directive('languageList', [
-  'languageService',
-  function (languageService) {
-    return {
-      restrict: 'E',
-      scope: {},
-      templateUrl: 'templates/components/language/language-list.template.html',
-      link: function (scope, element, attrs, ngModel) {
-        scope.language = languageService.read();
-        scope.changeLanguage = function () {
-          languageService.update(scope.language);
-        };
-      }
-    };
-  }
-]);
-/**
  * @name appUpdate
  * @author Morteza Tavanarad
  * @contributors []
@@ -4221,6 +4200,48 @@ angular.module('binary').directive('tradeCategory', [
   }
 ]);
 /**
+ * @name languageList Directive
+ * @author Morteza Tavanarad
+ * @contributors []
+ * @since 04/10/2016
+ * @copyright Binary Ltd
+ */
+angular.module('binary').directive('languageList', [
+  'languageService',
+  function (languageService) {
+    return {
+      restrict: 'E',
+      scope: {},
+      templateUrl: 'templates/components/language/language-list.template.html',
+      link: function (scope, element, attrs, ngModel) {
+        scope.language = languageService.read();
+        scope.changeLanguage = function () {
+          languageService.update(scope.language);
+        };
+      }
+    };
+  }
+]);
+angular.module('binary').directive('realityCheck', [
+  'accountService',
+  'languageService',
+  'websocketService',
+  '$state',
+  '$ionicPopup',
+  '$compile',
+  '$ionicLoading',
+  function (accountService, languageService, websocketService, $state, $ionicPopup, $compile, $ionicLoading) {
+    return {
+      restrict: 'E',
+      templateUrl: 'templates/components/reality-check/reality-check.template.html',
+      scope: { message: '=' },
+      controller: 'RealityCheckController',
+      controllerAs: 'reality',
+      bindToController: true
+    };
+  }
+]);
+/**
  * @name contractSummary
  * @author Massih Hazrati
  * @contributors []
@@ -4524,25 +4545,6 @@ angular.module('binary').directive('tradeType', [
         };
         init();
       }
-    };
-  }
-]);
-angular.module('binary').directive('realityCheck', [
-  'accountService',
-  'languageService',
-  'websocketService',
-  '$state',
-  '$ionicPopup',
-  '$compile',
-  '$ionicLoading',
-  function (accountService, languageService, websocketService, $state, $ionicPopup, $compile, $ionicLoading) {
-    return {
-      restrict: 'E',
-      templateUrl: 'templates/components/reality-check/reality-check.template.html',
-      scope: { message: '=' },
-      controller: 'RealityCheckController',
-      controllerAs: 'reality',
-      bindToController: true
     };
   }
 ]);
